@@ -1,22 +1,11 @@
-import api from './api';
+import settings from '../mock-data/settings';
 
-export const getAllSettings = async () => {
-  try {
-    const response = await api.get('/settings');
-    return response.data || {};
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || 'Failed to fetch settings';
-    throw new Error(message);
-  }
-};
+let currentSettings = { ...settings };
 
-export const updateSettings = async (settings) => {
-  try {
-    await api.put('/settings', settings);
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || 'Failed to update settings';
-    throw new Error(message);
-  }
+export const getAllSettings = async () => ({ ...currentSettings });
+
+export const updateSettings = async (newSettings) => {
+  currentSettings = { ...currentSettings, ...newSettings };
 };
 
 const settingService = { getAllSettings, updateSettings };

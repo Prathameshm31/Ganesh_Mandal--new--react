@@ -1,4 +1,6 @@
-import api from './api';
+import prasadData from '../mock-data/prasad';
+
+let prasad = [...prasadData];
 
 const toFrontend = (p) => ({
   id: String(p.id),
@@ -18,65 +20,44 @@ const toFrontend = (p) => ({
   notes: p.notes || '',
 });
 
-const toBackend = (p) => ({
-  festivalYear: p.festivalYear,
-  festivalDay: p.festivalDay,
-  prasadDate: p.prasadDate || null,
-  prasadName: p.prasadName,
-  sponsoredBy: p.sponsoredBy,
-  mobileNumber: p.mobileNumber,
-  address: p.address,
-  quantity: p.quantity,
-  estimatedCost: p.estimatedCost || null,
-  donationAmount: p.donationAmount || null,
-  preparedBy: p.preparedBy,
-  distributionTime: p.distributionTime,
-  status: p.status || 'Pending',
-  notes: p.notes,
-});
-
-export const getPrasadByYear = async (festivalYear) => {
-  const response = await api.get(`/prasad/year/${festivalYear}`);
-  return (response.data || []).map(toFrontend);
-};
+export const getPrasadByYear = async (festivalYear) =>
+  prasad.filter((p) => p.festivalYear === String(festivalYear)).map(toFrontend);
 
 export const getPrasadById = async (id) => {
-  const response = await api.get(`/prasad/${id}`);
-  return toFrontend(response.data);
+  const p = prasad.find((item) => item.id === Number(id));
+  return p ? toFrontend(p) : null;
 };
 
-export const getPrasadByYearAndDay = async (festivalYear, festivalDay) => {
-  const response = await api.get(`/prasad/year/${festivalYear}/day/${festivalDay}`);
-  return (response.data || []).map(toFrontend);
-};
+export const getPrasadByYearAndDay = async (festivalYear, festivalDay) =>
+  prasad
+    .filter((p) => p.festivalYear === String(festivalYear) && p.festivalDay === festivalDay)
+    .map(toFrontend);
 
-export const searchPrasad = async (keyword) => {
-  const response = await api.get('/prasad/search', { params: { keyword } });
-  return (response.data || []).map(toFrontend);
-};
+export const searchPrasad = async (keyword) =>
+  prasad
+    .filter((p) => p.prasadName && p.prasadName.toLowerCase().includes((keyword || '').toLowerCase()))
+    .map(toFrontend);
 
 export const createPrasad = async (data) => {
-  const response = await api.post('/prasad', toBackend(data));
-  return toFrontend(response.data);
+  const newPrasad = { ...data, id: prasad.length > 0 ? Math.max(...prasad.map((p) => p.id)) + 1 : 1 };
+  prasad.push(newPrasad);
+  return toFrontend(newPrasad);
 };
 
 export const updatePrasad = async (id, data) => {
-  const response = await api.put(`/prasad/${id}`, toBackend(data));
-  return toFrontend(response.data);
+  const idx = prasad.findIndex((p) => p.id === Number(id));
+  if (idx === -1) throw new Error('Prasad not found');
+  prasad[idx] = { ...prasad[idx], ...data };
+  return toFrontend(prasad[idx]);
 };
 
 export const deletePrasad = async (id) => {
-  await api.delete(`/prasad/${id}`);
+  prasad = prasad.filter((p) => p.id !== Number(id));
 };
 
 const prasadSponsorshipService = {
-  getPrasadByYear,
-  getPrasadById,
-  getPrasadByYearAndDay,
-  searchPrasad,
-  createPrasad,
-  updatePrasad,
-  deletePrasad,
+  getPrasadByYear, getPrasadById, getPrasadByYearAndDay,
+  searchPrasad, createPrasad, updatePrasad, deletePrasad,
 };
 
 export default prasadSponsorshipService;

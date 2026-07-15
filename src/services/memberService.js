@@ -1,41 +1,6 @@
-import api from './api';
+import membersData from '../mock-data/members';
 
-const toFrontendMember = (m) => ({
-  id: String(m.id),
-  fullName: m.name,
-  mobileNumber: m.mobile,
-  whatsappNumber: m.whatsappNumber || '',
-  email: m.email || '',
-  address: m.address || '',
-  colony: m.colony || '',
-  area: m.area || '',
-  houseNumber: m.houseNumber || '',
-  familyMembers: m.familyMembers || 1,
-  occupation: m.occupation || '',
-  profilePhoto: m.profilePhoto,
-  status: m.status || 'Active',
-  notes: m.notes || '',
-  joinDate: m.joinDate || (m.createdAt ? m.createdAt.split('T')[0] : ''),
-  lastYearAmount: m.lastYearAmount,
-});
-
-const toBackendMember = (m) => ({
-  name: m.fullName,
-  mobile: m.mobileNumber,
-  whatsappNumber: m.whatsappNumber,
-  email: m.email,
-  address: m.address,
-  colony: m.colony,
-  area: m.area,
-  houseNumber: m.houseNumber,
-  familyMembers: m.familyMembers,
-  occupation: m.occupation,
-  profilePhoto: m.profilePhoto,
-  status: m.status,
-  notes: m.notes,
-  joinDate: m.joinDate,
-  lastYearAmount: m.lastYearAmount,
-});
+let members = [...membersData];
 
 const paginate = (list, page = 1, limit = 10) => {
   const start = (page - 1) * limit;
@@ -49,106 +14,61 @@ const paginate = (list, page = 1, limit = 10) => {
 };
 
 export const getMembers = async ({ page = 1, limit = 10, sortBy = 'id', sortOrder = 'asc' } = {}) => {
-  try {
-    const response = await api.get('/members');
-    const members = (response.data || []).map(toFrontendMember);
-    const sorted = [...members].sort((a, b) => {
-      const aVal = a[sortBy] ?? '';
-      const bVal = b[sortBy] ?? '';
-      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
-    return paginate(sorted, page, limit);
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || 'Failed to fetch members';
-    throw new Error(message);
-  }
+  const sorted = [...members].sort((a, b) => {
+    const aVal = a[sortBy] ?? '';
+    const bVal = b[sortBy] ?? '';
+    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
+  });
+  return paginate(sorted, page, limit);
 };
 
-export const getMemberById = async (id) => {
-  try {
-    const response = await api.get(`/members/${id}`);
-    return toFrontendMember(response.data);
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || `Failed to fetch member ${id}`;
-    throw new Error(message);
-  }
-};
+export const getMemberById = async (id) =>
+  members.find((m) => String(m.id) === String(id)) || null;
 
 export const addMember = async (member) => {
-  try {
-    const response = await api.post('/members', toBackendMember(member));
-    return toFrontendMember(response.data);
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || 'Failed to add member';
-    throw new Error(message);
-  }
+  const newMember = { ...member };
+  members.push(newMember);
+  return newMember;
 };
 
 export const updateMember = async (id, member) => {
-  try {
-    const response = await api.put(`/members/${id}`, toBackendMember(member));
-    return toFrontendMember(response.data);
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || `Failed to update member ${id}`;
-    throw new Error(message);
-  }
+  const idx = members.findIndex((m) => String(m.id) === String(id));
+  if (idx === -1) throw new Error('Member not found');
+  members[idx] = { ...members[idx], ...member };
+  return members[idx];
 };
 
 export const deleteMember = async (id) => {
-  try {
-    const response = await api.delete(`/members/${id}`);
-    return response.data || { id, deleted: true };
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || `Failed to delete member ${id}`;
-    throw new Error(message);
-  }
+  members = members.filter((m) => String(m.id) !== String(id));
+  return { id, deleted: true };
 };
 
 export const searchMembers = async (query) => {
-  try {
-    const response = await api.get('/members/search', { params: { keyword: query } });
-    return (response.data || []).map(toFrontendMember);
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || 'Failed to search members';
-    throw new Error(message);
-  }
+  const q = (query || '').toLowerCase();
+  return members.filter(
+    (m) =>
+      (m.fullName || '').toLowerCase().includes(q) ||
+      (m.mobileNumber || '').includes(q) ||
+      (m.colony || '').toLowerCase().includes(q)
+  );
 };
 
 export const filterMembers = async (criteria) => {
-  try {
-    const params = {};
-    if (criteria.status) params.status = criteria.status;
-    if (criteria.colony) params.colony = criteria.colony;
-    if (criteria.occupation) params.occupation = criteria.occupation;
-    const response = await api.get('/members/search', { params });
-    return (response.data || []).map(toFrontendMember);
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || 'Failed to filter members';
-    throw new Error(message);
-  }
+  return members.filter((m) => {
+    if (criteria.status && m.status !== criteria.status) return false;
+    if (criteria.colony && m.colony !== criteria.colony) return false;
+    if (criteria.occupation && m.occupation !== criteria.occupation) return false;
+    return true;
+  });
 };
 
-export const getAllMembers = async () => {
-  try {
-    const response = await api.get('/members');
-    return (response.data || []).map(toFrontendMember);
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || 'Failed to fetch all members';
-    throw new Error(message);
-  }
-};
+export const getAllMembers = async () => members;
 
 const memberService = {
-  getMembers,
-  getMemberById,
-  addMember,
-  updateMember,
-  deleteMember,
-  searchMembers,
-  filterMembers,
-  getAllMembers,
+  getMembers, getMemberById, addMember, updateMember,
+  deleteMember, searchMembers, filterMembers, getAllMembers,
 };
 
 export default memberService;

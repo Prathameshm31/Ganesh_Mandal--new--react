@@ -3,7 +3,6 @@ export { default as donationService } from './donationService';
 export { default as colonyService } from './colonyService';
 export { default as activityService } from './activityService';
 export { default as dashboardService } from './dashboardService';
-export { default as api } from './api';
 export { default as murtiService } from './murtiService';
 export { default as prasadSponsorshipService } from './prasadSponsorshipService';
 export { default as volunteerService } from './volunteerService';

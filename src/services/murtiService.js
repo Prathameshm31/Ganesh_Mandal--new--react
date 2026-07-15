@@ -1,4 +1,6 @@
-import api from './api';
+import murtisData from '../mock-data/murtis';
+
+let murtis = [...murtisData];
 
 const toFrontendMurti = (m) => ({
   id: String(m.id),
@@ -20,139 +22,54 @@ const toFrontendMurti = (m) => ({
   remarks: m.remarks || '',
 });
 
-const toBackendMurti = (m) => ({
-  festivalYear: m.festivalYear,
-  murtiName: m.murtiName,
-  donatedBy: m.donatedBy,
-  mobileNumber: m.mobileNumber,
-  address: m.address,
-  murtiHeight: m.murtiHeight,
-  murtiType: m.murtiType,
-  artistName: m.artistName,
-  workshopName: m.workshopName,
-  installationDate: m.installationDate || null,
-  visarjanDate: m.visarjanDate || null,
-  estimatedCost: m.estimatedCost || null,
-  isSponsored: m.isSponsored || 'No',
-  donationAmount: m.donationAmount || null,
-  photoUrl: m.photoUrl || null,
-  remarks: m.remarks,
-});
-
-export const getAllMurtis = async () => {
-  try {
-    const response = await api.get('/murti');
-    return (response.data || []).map(toFrontendMurti);
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || 'Failed to fetch murti records';
-    throw new Error(message);
-  }
-};
+export const getAllMurtis = async () => murtis.map(toFrontendMurti);
 
 export const getMurtiById = async (id) => {
-  try {
-    const response = await api.get(`/murti/${id}`);
-    return toFrontendMurti(response.data);
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || 'Failed to fetch murti details';
-    throw new Error(message);
-  }
+  const m = murtis.find((murti) => murti.id === Number(id));
+  return m ? toFrontendMurti(m) : null;
 };
 
 export const getCurrentYearMurti = async () => {
-  try {
-    const response = await api.get('/murti/current-year');
-    if (!response.data) return null;
-    return toFrontendMurti(response.data);
-  } catch (error) {
-    return null;
-  }
+  const currentYear = String(new Date().getFullYear());
+  const m = murtis.find((murti) => murti.festivalYear === currentYear);
+  return m ? toFrontendMurti(m) : null;
 };
 
-export const getMurtiHistory = async (year) => {
-  try {
-    const response = await api.get('/murti/history', { params: { year } });
-    return (response.data || []).map(toFrontendMurti);
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || 'Failed to fetch murti history';
-    throw new Error(message);
-  }
-};
+export const getMurtiHistory = async (year) =>
+  murtis.filter((m) => !year || m.festivalYear === String(year)).map(toFrontendMurti);
 
-export const searchMurtiByDonor = async (donorName) => {
-  try {
-    const response = await api.get('/murti/search', { params: { donorName } });
-    return (response.data || []).map(toFrontendMurti);
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || 'Failed to search murti';
-    throw new Error(message);
-  }
-};
+export const searchMurtiByDonor = async (donorName) =>
+  murtis
+    .filter((m) => m.donatedBy && m.donatedBy.toLowerCase().includes((donorName || '').toLowerCase()))
+    .map(toFrontendMurti);
 
-export const filterMurtiByYear = async (year) => {
-  try {
-    const response = await api.get('/murti/filter', { params: { year } });
-    return (response.data || []).map(toFrontendMurti);
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || 'Failed to filter murti';
-    throw new Error(message);
-  }
-};
+export const filterMurtiByYear = async (year) =>
+  murtis.filter((m) => m.festivalYear === String(year)).map(toFrontendMurti);
 
 export const createMurti = async (murti) => {
-  try {
-    const response = await api.post('/murti', toBackendMurti(murti));
-    return toFrontendMurti(response.data);
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || 'Failed to create murti record';
-    throw new Error(message);
-  }
+  const newMurti = { ...murti, id: murtis.length > 0 ? Math.max(...murtis.map((m) => m.id)) + 1 : 1 };
+  murtis.push(newMurti);
+  return toFrontendMurti(newMurti);
 };
 
 export const updateMurti = async (id, murti) => {
-  try {
-    const response = await api.put(`/murti/${id}`, toBackendMurti(murti));
-    return toFrontendMurti(response.data);
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || 'Failed to update murti record';
-    throw new Error(message);
-  }
+  const idx = murtis.findIndex((m) => m.id === Number(id));
+  if (idx === -1) throw new Error('Murti not found');
+  murtis[idx] = { ...murtis[idx], ...murti };
+  return toFrontendMurti(murtis[idx]);
 };
 
 export const deleteMurti = async (id) => {
-  try {
-    await api.delete(`/murti/${id}`);
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || 'Failed to delete murti record';
-    throw new Error(message);
-  }
+  murtis = murtis.filter((m) => m.id !== Number(id));
 };
 
 export const uploadMurtiPhoto = async (file) => {
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await api.post('/murti/upload-photo', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return response.data;
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || 'Failed to upload photo';
-    throw new Error(message);
-  }
+  return { url: URL.createObjectURL(file) };
 };
 
 const murtiService = {
-  getAllMurtis,
-  getMurtiById,
-  getCurrentYearMurti,
-  getMurtiHistory,
-  searchMurtiByDonor,
-  filterMurtiByYear,
-  createMurti,
-  updateMurti,
-  deleteMurti,
-  uploadMurtiPhoto,
+  getAllMurtis, getMurtiById, getCurrentYearMurti, getMurtiHistory,
+  searchMurtiByDonor, filterMurtiByYear, createMurti, updateMurti, deleteMurti, uploadMurtiPhoto,
 };
 
 export default murtiService;

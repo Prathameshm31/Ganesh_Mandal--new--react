@@ -1,4 +1,6 @@
-import api from './api';
+import attendanceData from '../mock-data/attendance';
+
+let attendance = [...attendanceData];
 
 const toFrontend = (a) => ({
   id: String(a.id), volunteerId: String(a.volunteerId), volunteerName: a.volunteerName || '',
@@ -7,43 +9,45 @@ const toFrontend = (a) => ({
   attendanceDate: a.attendanceDate || '', status: a.status || '', remarks: a.remarks || '',
 });
 
-const toBackend = (a) => ({
-  volunteerId: Number(a.volunteerId), eventId: Number(a.eventId),
-  attendanceDate: a.attendanceDate, status: a.status, remarks: a.remarks || null,
-});
-
 export const markAttendance = async (data) => {
-  const r = await api.post('/attendance', toBackend(data));
-  return toFrontend(r.data);
+  const record = { ...data, id: `ATT-${String(attendance.length + 1).padStart(4, '0')}` };
+  attendance.push(record);
+  return toFrontend(record);
 };
 
 export const markBulkAttendance = async (list) => {
-  const r = await api.post('/attendance/bulk', list.map(toBackend));
-  return (r.data || []).map(toFrontend);
+  const records = list.map((item, i) => ({
+    ...item,
+    id: `ATT-${String(attendance.length + i + 1).padStart(4, '0')}`,
+  }));
+  attendance.push(...records);
+  return records.map(toFrontend);
 };
 
-export const getAttendanceByEvent = async (eventId) => {
-  const r = await api.get(`/attendance/by-event/${eventId}`);
-  return (r.data || []).map(toFrontend);
-};
+export const getAttendanceByEvent = async (eventId) =>
+  attendance.filter((a) => String(a.eventId) === String(eventId)).map(toFrontend);
 
-export const getAttendanceByEventAndDate = async (eventId, date) => {
-  const r = await api.get('/attendance/by-event-date', { params: { eventId, date } });
-  return (r.data || []).map(toFrontend);
-};
+export const getAttendanceByEventAndDate = async (eventId, date) =>
+  attendance
+    .filter((a) => String(a.eventId) === String(eventId) && a.attendanceDate === date)
+    .map(toFrontend);
 
-export const getAttendanceByVolunteer = async (volunteerId) => {
-  const r = await api.get(`/attendance/by-volunteer/${volunteerId}`);
-  return (r.data || []).map(toFrontend);
-};
+export const getAttendanceByVolunteer = async (volunteerId) =>
+  attendance.filter((a) => String(a.volunteerId) === String(volunteerId)).map(toFrontend);
 
 export const getAttendanceStats = async (festivalYear) => {
-  const r = await api.get('/attendance/stats', { params: { festivalYear } });
-  return r.data;
+  const filtered = festivalYear
+    ? attendance.filter((a) => a.attendanceDate && a.attendanceDate.startsWith(festivalYear))
+    : attendance;
+  const total = filtered.length;
+  const present = filtered.filter((a) => a.status === 'Present').length;
+  const late = filtered.filter((a) => a.status === 'Late').length;
+  const absent = filtered.filter((a) => a.status === 'Absent').length;
+  return { total, present, late, absent };
 };
 
 export const deleteAttendance = async (id) => {
-  await api.delete(`/attendance/${id}`);
+  attendance = attendance.filter((a) => String(a.id) !== String(id));
 };
 
 const attendanceService = {

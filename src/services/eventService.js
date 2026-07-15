@@ -1,9 +1,7 @@
-import api from './api';
+import eventsData from '../mock-data/events';
 
-const EVENT_CATEGORIES = ['Before Festival', 'Day 1', 'Daily', 'Special Days', 'Final Day'];
-const FESTIVAL_DAYS = ['Pre-Festival', 'Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7', 'Day 8', 'Day 9', 'Day 10', 'Final Day', 'Daily'];
-
-const STATUSES = ['Planned', 'In Progress', 'Completed', 'Cancelled'];
+let events = [...eventsData];
+let nextId = events.length > 0 ? Math.max(...events.map((e) => e.id)) + 1 : 1;
 
 const toFrontend = (e) => ({
   id: String(e.id), eventName: e.eventName || '', eventCategory: e.eventCategory || '',
@@ -14,41 +12,45 @@ const toFrontend = (e) => ({
   budget: e.budget != null ? Number(e.budget) : null, status: e.status || 'Planned',
 });
 
-const toBackend = (e) => ({
-  eventName: e.eventName, eventCategory: e.eventCategory || null, festivalDay: e.festivalDay || null,
-  festivalYear: e.festivalYear, date: e.date || null, startTime: e.startTime || null,
-  endTime: e.endTime || null, venue: e.venue || null, description: e.description || null,
-  organizer: e.organizer || null, coordinator: e.coordinator || null, budget: e.budget || null,
-  status: e.status || 'Planned',
-});
+const EVENT_CATEGORIES = ['Before Festival', 'Day 1', 'Daily', 'Special Days', 'Final Day'];
+const FESTIVAL_DAYS = ['Pre-Festival', 'Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7', 'Day 8', 'Day 9', 'Day 10', 'Final Day', 'Daily'];
+const STATUSES = ['Planned', 'In Progress', 'Completed', 'Cancelled'];
 
-export const getAllEvents = async () => {
-  const r = await api.get('/events');
-  return (r.data || []).map(toFrontend);
-};
+export const getAllEvents = async () => events.map(toFrontend);
 
 export const getEventById = async (id) => {
-  const r = await api.get(`/events/${id}`);
-  return toFrontend(r.data);
+  const e = events.find((ev) => ev.id === Number(id));
+  return e ? toFrontend(e) : null;
 };
 
 export const searchEvents = async ({ keyword, category, festivalDay, festivalYear, status } = {}) => {
-  const r = await api.get('/events/search', { params: { keyword, category, festivalDay, festivalYear, status } });
-  return (r.data || []).map(toFrontend);
+  return events
+    .filter((e) => {
+      if (keyword && !e.eventName.toLowerCase().includes(keyword.toLowerCase())) return false;
+      if (category && e.eventCategory !== category) return false;
+      if (festivalDay && e.festivalDay !== festivalDay) return false;
+      if (festivalYear && e.festivalYear !== festivalYear) return false;
+      if (status && e.status !== status) return false;
+      return true;
+    })
+    .map(toFrontend);
 };
 
 export const createEvent = async (data) => {
-  const r = await api.post('/events', toBackend(data));
-  return toFrontend(r.data);
+  const newEvent = { ...data, id: nextId++ };
+  events.push(newEvent);
+  return toFrontend(newEvent);
 };
 
 export const updateEvent = async (id, data) => {
-  const r = await api.put(`/events/${id}`, toBackend(data));
-  return toFrontend(r.data);
+  const idx = events.findIndex((e) => e.id === Number(id));
+  if (idx === -1) throw new Error('Event not found');
+  events[idx] = { ...events[idx], ...data };
+  return toFrontend(events[idx]);
 };
 
 export const deleteEvent = async (id) => {
-  await api.delete(`/events/${id}`);
+  events = events.filter((e) => e.id !== Number(id));
 };
 
 const eventService = {

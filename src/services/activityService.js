@@ -1,61 +1,31 @@
-import api from './api';
+import activitiesData from '../mock-data/activities';
 
-export const getActivities = async () => {
-  try {
-    const response = await api.get('/activities');
-    return response.data || [];
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || 'Failed to fetch activities';
-    throw new Error(message);
-  }
-};
+let activities = [...activitiesData];
+let nextId = activities.length > 0 ? Math.max(...activities.map((a) => a.id)) + 1 : 1;
 
-export const getActivityById = async (id) => {
-  try {
-    const response = await api.get(`/activities/${id}`);
-    return response.data;
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || `Failed to fetch activity ${id}`;
-    throw new Error(message);
-  }
-};
+export const getActivities = async () => activities;
+
+export const getActivityById = async (id) =>
+  activities.find((a) => a.id === Number(id)) || null;
 
 export const addActivity = async (activity) => {
-  try {
-    const response = await api.post('/activities', activity);
-    return response.data;
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || 'Failed to add activity';
-    throw new Error(message);
-  }
+  const newActivity = { ...activity, id: nextId++ };
+  activities.push(newActivity);
+  return newActivity;
 };
 
 export const updateActivity = async (id, activity) => {
-  try {
-    const response = await api.put(`/activities/${id}`, activity);
-    return response.data;
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || `Failed to update activity ${id}`;
-    throw new Error(message);
-  }
+  const idx = activities.findIndex((a) => a.id === Number(id));
+  if (idx === -1) throw new Error('Activity not found');
+  activities[idx] = { ...activities[idx], ...activity };
+  return activities[idx];
 };
 
 export const deleteActivity = async (id) => {
-  try {
-    const response = await api.delete(`/activities/${id}`);
-    return response.data || { id, deleted: true };
-  } catch (error) {
-    const message = error.response?.data?.message || error.message || `Failed to delete activity ${id}`;
-    throw new Error(message);
-  }
+  activities = activities.filter((a) => a.id !== Number(id));
+  return { id, deleted: true };
 };
 
-const activityService = {
-  getActivities,
-  getActivityById,
-  addActivity,
-  updateActivity,
-  deleteActivity,
-};
+const activityService = { getActivities, getActivityById, addActivity, updateActivity, deleteActivity };
 
 export default activityService;

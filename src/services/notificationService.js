@@ -1,4 +1,8 @@
-import api from './api';
+import notificationsData from '../mock-data/notifications';
+
+let history = [...notificationsData.history];
+let templates = [...notificationsData.templates];
+let config = { ...notificationsData.config };
 
 const toFrontendNotification = (n) => ({
   id: n.id,
@@ -15,140 +19,86 @@ const toFrontendNotification = (n) => ({
 });
 
 export const getNotificationDashboard = async () => {
-  try {
-    const response = await api.get('/notifications/dashboard');
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to load dashboard');
-  }
+  const sent = history.filter((n) => n.status === 'Sent').length;
+  const failed = history.filter((n) => n.status === 'Failed').length;
+  const pending = history.filter((n) => n.status === 'Pending').length;
+  return { total: history.length, sent, failed, pending, templates: templates.length };
 };
 
 export const getNotificationHistory = async (filters = {}) => {
-  try {
-    const params = {};
-    if (filters.status) params.status = filters.status;
-    if (filters.channel) params.channel = filters.channel;
-    if (filters.eventId) params.eventId = filters.eventId;
-    if (filters.userId) params.userId = filters.userId;
-    if (filters.dateFrom) params.dateFrom = filters.dateFrom;
-    if (filters.dateTo) params.dateTo = filters.dateTo;
-    const response = await api.get('/notifications/history', { params });
-    return (response.data || []).map(toFrontendNotification);
-  } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to load history');
-  }
+  return history
+    .filter((n) => {
+      if (filters.status && n.status !== filters.status) return false;
+      if (filters.channel && n.channel !== filters.channel) return false;
+      if (filters.eventId && n.eventId !== filters.eventId) return false;
+      if (filters.userId && n.userId !== filters.userId) return false;
+      return true;
+    })
+    .map(toFrontendNotification);
 };
 
 export const getNotificationById = async (id) => {
-  try {
-    const response = await api.get(`/notifications/${id}`);
-    return toFrontendNotification(response.data);
-  } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to load notification');
-  }
+  const n = history.find((item) => item.id === id);
+  return n ? toFrontendNotification(n) : null;
 };
 
 export const sendNotification = async (request) => {
-  try {
-    await api.post('/notifications/send', request);
-  } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to send notification');
-  }
+  const newNotification = {
+    id: `NTF-${String(history.length + 1).padStart(4, '0')}`,
+    ...request,
+    status: 'Sent',
+    sentTime: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+  };
+  history.push(newNotification);
 };
 
 export const sendReminder = async (request) => {
-  try {
-    await api.post('/notifications/reminder', request);
-  } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to send reminder');
-  }
+  await sendNotification({ ...request, notificationType: 'Event Reminder' });
 };
 
 export const resendNotification = async (id) => {
-  try {
-    const response = await api.post(`/notifications/${id}/resend`);
-    return toFrontendNotification(response.data);
-  } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to resend');
-  }
+  const n = history.find((item) => item.id === id);
+  if (!n) throw new Error('Notification not found');
+  const resent = { ...n, status: 'Sent', sentTime: new Date().toISOString() };
+  history.push(resent);
+  return toFrontendNotification(resent);
 };
 
-export const getTemplates = async () => {
-  try {
-    const response = await api.get('/notification-templates');
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to load templates');
-  }
-};
+export const getTemplates = async () => templates;
 
-export const getTemplateById = async (id) => {
-  try {
-    const response = await api.get(`/notification-templates/${id}`);
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to load template');
-  }
-};
+export const getTemplateById = async (id) =>
+  templates.find((t) => t.id === id) || null;
 
 export const createTemplate = async (template) => {
-  try {
-    const response = await api.post('/notification-templates', template);
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to create template');
-  }
+  const newTemplate = { ...template, id: `TPL-${String(templates.length + 1).padStart(4, '0')}` };
+  templates.push(newTemplate);
+  return newTemplate;
 };
 
 export const updateTemplate = async (id, template) => {
-  try {
-    const response = await api.put(`/notification-templates/${id}`, template);
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to update template');
-  }
+  const idx = templates.findIndex((t) => t.id === id);
+  if (idx === -1) throw new Error('Template not found');
+  templates[idx] = { ...templates[idx], ...template };
+  return templates[idx];
 };
 
 export const deleteTemplate = async (id) => {
-  try {
-    await api.delete(`/notification-templates/${id}`);
-  } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to delete template');
-  }
+  templates = templates.filter((t) => t.id !== id);
 };
 
-export const getNotificationConfig = async () => {
-  try {
-    const response = await api.get('/notification-config');
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to load config');
-  }
-};
+export const getNotificationConfig = async () => ({ ...config });
 
-export const updateNotificationConfig = async (config) => {
-  try {
-    const response = await api.put('/notification-config', config);
-    return response.data;
-  } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to update config');
-  }
+export const updateNotificationConfig = async (newConfig) => {
+  config = { ...config, ...newConfig };
+  return config;
 };
 
 const notificationService = {
-  getNotificationDashboard,
-  getNotificationHistory,
-  getNotificationById,
-  sendNotification,
-  sendReminder,
-  resendNotification,
-  getTemplates,
-  getTemplateById,
-  createTemplate,
-  updateTemplate,
-  deleteTemplate,
-  getNotificationConfig,
-  updateNotificationConfig,
+  getNotificationDashboard, getNotificationHistory, getNotificationById,
+  sendNotification, sendReminder, resendNotification,
+  getTemplates, getTemplateById, createTemplate, updateTemplate, deleteTemplate,
+  getNotificationConfig, updateNotificationConfig,
 };
 
 export default notificationService;
