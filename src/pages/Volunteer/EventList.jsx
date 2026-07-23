@@ -4,13 +4,12 @@ import {
   TableRow, TableCell, TablePagination, Card, CardContent, Stack,
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
   Chip, IconButton, Tooltip, InputAdornment, MenuItem, Grid,
-  FormControl, InputLabel, Select,
+  FormControl, InputLabel, Select, CircularProgress,
 } from '@mui/material';
-import { MdAdd, MdEdit, MdDelete, MdSearch, MdPeople } from 'react-icons/md';
+import { MdAdd, MdEdit, MdDelete, MdSearch } from 'react-icons/md';
 import { toast } from 'react-toastify';
 import eventService from '../../services/eventService';
 import EventForm from './EventForm';
-import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 
 const currentYear = new Date().getFullYear().toString();
 
@@ -35,25 +34,22 @@ export default function EventList() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  const filtered = events.filter((e) => {
-    if (keyword && !e.eventName?.toLowerCase().includes(keyword.toLowerCase()) && !e.organizer?.toLowerCase().includes(keyword.toLowerCase())) return false;
-    if (catFilter && e.eventCategory !== catFilter) return false;
-    if (dayFilter && e.festivalDay !== dayFilter) return false;
-    if (statusFilter && e.status !== statusFilter) return false;
-    return true;
-  });
-
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await eventService.searchEvents({ festivalYear: yearFilter });
+      const params = { festivalYear: yearFilter };
+      if (keyword) params.keyword = keyword;
+      if (catFilter) params.category = catFilter;
+      if (dayFilter) params.festivalDay = dayFilter;
+      if (statusFilter) params.status = statusFilter;
+      const data = await eventService.searchEvents(params);
       setEvents(data);
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || 'Failed to load events');
     } finally {
       setLoading(false);
     }
-  }, [yearFilter]);
+  }, [yearFilter, keyword, catFilter, dayFilter, statusFilter]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -68,7 +64,7 @@ export default function EventList() {
       toast.success('Event deleted');
       setEvents((prev) => prev.filter((e) => e.id !== deleteTarget.id));
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || 'Failed to delete event');
     } finally {
       setDeleting(false);
       setDeleteTarget(null);
@@ -118,7 +114,7 @@ export default function EventList() {
                 <InputLabel>Day</InputLabel>
                 <Select label="Day" value={dayFilter} onChange={(e) => setDayFilter(e.target.value)}>
                   <MenuItem value="">All</MenuItem>
-                  {['Pre-Festival', 'Day 1', 'Daily', 'Final Day'].map((d) => <MenuItem key={d} value={d}>{d}</MenuItem>)}
+                  {eventService.FESTIVAL_DAYS.map((d) => <MenuItem key={d} value={d}>{d}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
@@ -140,62 +136,66 @@ export default function EventList() {
         </CardContent>
       </Card>
 
-      <Card variant="outlined" sx={{ borderRadius: 3 }}>
-        {loading ? <LoadingSkeleton rows={8} /> : (
-          <>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 600 }}>Event</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Category</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Day</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Date / Time</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Organizer</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }} align="right">Actions</TableCell>
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
+          <CircularProgress />
+        </Box>
+      ) : events.length === 0 ? (
+        <Card variant="outlined" sx={{ borderRadius: 3, p: 6, textAlign: 'center' }}>
+          <MdSearch size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
+          <Typography variant="h6" color="text.secondary" mb={1}>No events found</Typography>
+          <Typography variant="body2" color="text.secondary" mb={2}>Try adjusting your search or filters, or add a new event.</Typography>
+          <Button variant="contained" startIcon={<MdAdd />} onClick={openAdd}>Add Event</Button>
+        </Card>
+      ) : (
+        <Card variant="outlined" sx={{ borderRadius: 3 }}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 600 }}>Event</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Category</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Day</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Date / Time</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Organizer</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                <TableCell sx={{ fontWeight: 600 }} align="right">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {events.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((e) => (
+                <TableRow key={e.id} hover sx={{ '&:last-child td': { border: 0 } }}>
+                  <TableCell>
+                    <Typography variant="body2" fontWeight={500}>{e.eventName}</Typography>
+                    {e.venue && <Typography variant="caption" color="text.secondary">{e.venue}</Typography>}
+                  </TableCell>
+                  <TableCell>
+                    <Chip label={e.eventCategory || 'N/A'} size="small" sx={{ bgcolor: `${categoryColors[e.eventCategory] || '#6b7280'}18`, color: categoryColors[e.eventCategory] || '#6b7280', fontWeight: 500 }} />
+                  </TableCell>
+                  <TableCell><Chip label={e.festivalDay || 'N/A'} size="small" variant="outlined" /></TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{e.date || '-'}</Typography>
+                    {e.startTime && <Typography variant="caption" color="text.secondary">{e.startTime}{e.endTime ? ` - ${e.endTime}` : ''}</Typography>}
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{e.organizer || '-'}</Typography>
+                    {e.coordinator && <Typography variant="caption" color="text.secondary">Coord: {e.coordinator}</Typography>}
+                  </TableCell>
+                  <TableCell>{statusChip(e.status)}</TableCell>
+                  <TableCell align="right">
+                    <Stack direction="row" justifyContent="flex-end" spacing={0.5}>
+                      <Tooltip title="Edit"><IconButton size="small" onClick={() => openEdit(e)}><MdEdit size={16} /></IconButton></Tooltip>
+                      <Tooltip title="Delete"><IconButton size="small" onClick={() => setDeleteTarget(e)}><MdDelete size={16} /></IconButton></Tooltip>
+                    </Stack>
+                  </TableCell>
                 </TableRow>
-              </TableHead>
-              <TableBody>
-                {filtered.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((e) => (
-                  <TableRow key={e.id} hover sx={{ '&:last-child td': { border: 0 } }}>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight={500}>{e.eventName}</Typography>
-                      {e.venue && <Typography variant="caption" color="text.secondary">{e.venue}</Typography>}
-                    </TableCell>
-                    <TableCell>
-                      <Chip label={e.eventCategory || 'N/A'} size="small" sx={{ bgcolor: `${categoryColors[e.eventCategory] || '#6b7280'}18`, color: categoryColors[e.eventCategory] || '#6b7280', fontWeight: 500 }} />
-                    </TableCell>
-                    <TableCell><Chip label={e.festivalDay || 'N/A'} size="small" variant="outlined" /></TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{e.date || '-'}</Typography>
-                      {e.startTime && <Typography variant="caption" color="text.secondary">{e.startTime}{e.endTime ? ` - ${e.endTime}` : ''}</Typography>}
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{e.organizer || '-'}</Typography>
-                      {e.coordinator && <Typography variant="caption" color="text.secondary">Coord: {e.coordinator}</Typography>}
-                    </TableCell>
-                    <TableCell>{statusChip(e.status)}</TableCell>
-                    <TableCell align="right">
-                      <Stack direction="row" justifyContent="flex-end" spacing={0.5}>
-                        <Tooltip title="Edit"><IconButton size="small" onClick={() => openEdit(e)}><MdEdit size={16} /></IconButton></Tooltip>
-                        <Tooltip title="Delete"><IconButton size="small" onClick={() => setDeleteTarget(e)}><MdDelete size={16} /></IconButton></Tooltip>
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {filtered.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} align="center"><Typography color="text.secondary" py={4}>No events found</Typography></TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-            {filtered.length > rowsPerPage && (
-              <TablePagination component="div" count={filtered.length} page={page} onPageChange={(_, p) => setPage(p)} rowsPerPage={rowsPerPage} rowsPerPageOptions={[]} />
-            )}
-          </>
-        )}
-      </Card>
+              ))}
+            </TableBody>
+          </Table>
+          {events.length > rowsPerPage && (
+            <TablePagination component="div" count={events.length} page={page} onPageChange={(_, p) => setPage(p)} rowsPerPage={rowsPerPage} rowsPerPageOptions={[]} />
+          )}
+        </Card>
+      )}
 
       <EventForm open={formOpen} editId={editId} initial={editData} onClose={() => setFormOpen(false)} onSaved={handleSaved} />
 

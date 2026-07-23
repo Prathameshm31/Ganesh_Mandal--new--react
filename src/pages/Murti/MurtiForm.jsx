@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box, Typography, Card, CardContent, TextField, Button, Grid,
-  MenuItem, Stack,
+  MenuItem, Stack, CircularProgress,
 } from '@mui/material';
 import { MdSave, MdArrowBack, MdCloudUpload } from 'react-icons/md';
 import { toast } from 'react-toastify';
@@ -99,7 +99,13 @@ export default function MurtiForm() {
     }
   };
 
-  if (loading) return <LoadingSkeleton />;
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box>

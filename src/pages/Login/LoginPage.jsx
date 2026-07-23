@@ -17,12 +17,11 @@ import { useAuth } from '../../context/AuthContext';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, loading } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
@@ -31,7 +30,6 @@ export default function LoginPage() {
       setError('Please fill in all fields');
       return;
     }
-    setLoading(true);
     setError('');
     try {
       await login(username, password);
@@ -39,8 +37,6 @@ export default function LoginPage() {
       navigate('/');
     } catch (err) {
       setError(err.message || 'Invalid credentials');
-    } finally {
-      setLoading(false);
     }
   };
 

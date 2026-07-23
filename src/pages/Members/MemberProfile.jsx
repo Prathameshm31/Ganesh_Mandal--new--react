@@ -104,7 +104,7 @@ export default function MemberProfile() {
         getDonationsByMember(id),
       ]);
       setMember(memberData);
-      setDonations([...donationsData].sort((a, b) => new Date(b.donationDate) - new Date(a.donationDate)));
+      setDonations([...donationsData].sort((a, b) => new Date(b.collectionDate) - new Date(a.collectionDate)));
     } catch (err) {
       setError(err.message || 'Failed to load member');
     } finally {
@@ -122,7 +122,7 @@ export default function MemberProfile() {
 
   const availableYears = useMemo(() => {
     const s = new Set();
-    donations.forEach((d) => s.add(new Date(d.donationDate).getFullYear()));
+    donations.forEach((d) => s.add(new Date(d.collectionDate).getFullYear()));
     return Array.from(s).sort((a, b) => b - a);
   }, [donations]);
 
@@ -137,7 +137,7 @@ export default function MemberProfile() {
         d.paymentMode.toLowerCase().includes(q)
       );
     }
-    if (yearFilter !== 'all') f = f.filter((d) => new Date(d.donationDate).getFullYear() === Number(yearFilter));
+    if (yearFilter !== 'all') f = f.filter((d) => new Date(d.collectionDate).getFullYear() === Number(yearFilter));
     if (modeFilter !== 'all') f = f.filter((d) => d.paymentMode === modeFilter);
     return f;
   }, [donations, search, yearFilter, modeFilter]);
@@ -148,9 +148,9 @@ export default function MemberProfile() {
     const count = amounts.length;
     const avg = count > 0 ? total / count : 0;
     const highest = count > 0 ? Math.max(...amounts) : 0;
-    const lastDate = count > 0 ? donations.reduce((a, b) => new Date(a.donationDate) > new Date(b.donationDate) ? a : b).donationDate : '—';
+    const lastDate = count > 0 ? donations.reduce((a, b) => new Date(a.collectionDate) > new Date(b.collectionDate) ? a : b).collectionDate : '—';
     const cy = new Date().getFullYear();
-    const cyTotal = donations.filter((d) => new Date(d.donationDate).getFullYear() === cy).reduce((s, v) => s + v.amount, 0);
+    const cyTotal = donations.filter((d) => new Date(d.collectionDate).getFullYear() === cy).reduce((s, v) => s + v.amount, 0);
     return { total, count, avg, highest, lastDate, cyTotal };
   }, [donations]);
 
@@ -161,9 +161,9 @@ export default function MemberProfile() {
     let onlineTotal = 0;
     const onlineModes = ['UPI', 'Google Pay', 'PhonePe', 'Paytm', 'Bank Transfer'];
     donations.forEach((d) => {
-      const y = d.donationDate.substring(0, 4);
+      const y = d.collectionDate.substring(0, 4);
       yearMap[y] = (yearMap[y] || 0) + d.amount;
-      const m = d.donationDate.substring(0, 7);
+      const m = d.collectionDate.substring(0, 7);
       monthMap[m] = (monthMap[m] || 0) + d.amount;
       if (onlineModes.includes(d.paymentMode)) onlineTotal += d.amount;
       else cashTotal += d.amount;
@@ -180,9 +180,9 @@ export default function MemberProfile() {
 
   const timeline = useMemo(() => {
     const items = [
-      { date: member?.joinDate || '—', title: 'Member Registered', subtitle: member?.fullName, type: 'registration', icon: 'UserPlus' },
+      { date: member?.joinDate || '—', title: 'Member Registered', subtitle: member?.name, type: 'registration', icon: 'UserPlus' },
       ...donations.map((d) => ({
-        date: d.donationDate,
+        date: d.collectionDate,
         title: `Donation of ${formatIndian(d.amount)}`,
         subtitle: `${d.paymentMode} · ${d.receiptNumber || 'No receipt'}`,
         type: 'donation',
@@ -201,14 +201,14 @@ export default function MemberProfile() {
     }
     const headers = 'Date,Amount,Payment Mode,Receipt Number,Collected By,Remarks';
     const rows = filteredDonations.map((d) =>
-      `"${d.donationDate}","${d.amount}","${d.paymentMode}","${d.receiptNumber || ''}","${d.collectorName || ''}","${(d.remarks || '').replace(/"/g, '""')}"`
+      `"${d.collectionDate}","${d.amount}","${d.paymentMode}","${d.receiptNumber || ''}","${d.collectorName || ''}","${(d.remarks || '').replace(/"/g, '""')}"`
     ).join('\n');
     const csv = `${headers}\n${rows}`;
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${member?.fullName || 'member'}_donations.csv`;
+    a.download = `${member?.name || 'member'}_donations.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success('CSV exported');
@@ -275,14 +275,22 @@ export default function MemberProfile() {
         <Paper sx={{ p: 3, mb: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, flexWrap: 'wrap' }}>
             <Avatar sx={{ bgcolor: 'primary.main', width: 72, height: 72, fontSize: 30, fontWeight: 700 }}>
-              {member.fullName?.charAt(0)?.toUpperCase() || '?'}
+              {member.name?.charAt(0)?.toUpperCase() || '?'}
             </Avatar>
             <Box sx={{ flex: 1, minWidth: 200 }}>
-              <Typography variant="h5" fontWeight={700}>{member.fullName}</Typography>
+              <Typography variant="h5" fontWeight={700}>{member.name}</Typography>
               <Typography variant="body2" color="text.secondary">{member.id} · Member since {member.joinDate || '—'}</Typography>
               <Box sx={{ display: 'flex', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
-                <Typography variant="body2" color="text.secondary">{member.mobileNumber}</Typography>
+                <Typography variant="body2" color="text.secondary">{member.mobile}</Typography>
                 {member.colony && <Typography variant="body2" color="text.secondary">· {member.colony}</Typography>}
+              </Box>
+              <Box sx={{ display: 'flex', gap: 0.5, mt: 1, flexWrap: 'wrap' }}>
+                {member.roles && member.roles.map((r, i) => (
+                  <Chip key={i} label={r} size="small" color="primary" variant="filled" />
+                ))}
+                {member.festivalYear && <Chip label={member.festivalYear} size="small" variant="outlined" />}
+                {member.committeeCategory && <Chip label={member.committeeCategory} size="small" variant="outlined" />}
+                {member.userId && <Chip label="Has Login" size="small" color="success" variant="outlined" />}
               </Box>
             </Box>
             <Chip label={member.status} color={member.status === 'Active' ? 'success' : 'default'} variant="outlined" sx={{ fontWeight: 600 }} />
@@ -463,7 +471,7 @@ export default function MemberProfile() {
                   <TableBody>
                     {paginated.map((d) => (
                       <TableRow key={d.id} hover>
-                        <TableCell>{d.donationDate}</TableCell>
+                        <TableCell>{d.collectionDate}</TableCell>
                         <TableCell sx={{ fontWeight: 600 }}>{formatIndian(d.amount)}</TableCell>
                         <TableCell>
                           <Chip label={d.paymentMode} size="small" color={getPaymentModeColor(d.paymentMode)} variant="outlined" />

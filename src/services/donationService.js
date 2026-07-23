@@ -1,70 +1,71 @@
-import donationsData from '../mock-data/donations';
+import apiClient from '../api/apiClient';
 
-let donations = [...donationsData];
-
-const paginate = (list, page = 1, limit = 10) => {
-  const start = (page - 1) * limit;
+export const getDonations = async ({ page = 1, limit = 10, sortBy = 'collectionDate', sortOrder = 'desc' } = {}) => {
+  const params = { page: page - 1, size: limit, sortBy, sortOrder };
+  const response = await apiClient.get('/collections', { params });
+  const springPage = response.data;
   return {
-    data: list.slice(start, start + limit),
-    total: list.length,
+    data: springPage.content || springPage,
+    total: springPage.totalElements ?? (Array.isArray(springPage) ? springPage.length : 0),
     page,
     limit,
-    totalPages: Math.ceil(list.length / limit) || 1,
+    totalPages: springPage.totalPages ?? 1,
   };
 };
 
-export const getDonations = async ({ page = 1, limit = 10, sortBy = 'donationDate', sortOrder = 'desc' } = {}) => {
-  const sorted = [...donations].sort((a, b) => {
-    const aVal = a[sortBy] ?? '';
-    const bVal = b[sortBy] ?? '';
-    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
-    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
-    return 0;
-  });
-  return paginate(sorted, page, limit);
+export const getDonationById = async (id) => {
+  const response = await apiClient.get(`/collections/${id}`);
+  return response.data;
 };
 
-export const getDonationById = async (id) =>
-  donations.find((d) => String(d.id) === String(id)) || null;
-
 export const addDonation = async (donation) => {
-  const newDonation = { ...donation };
-  donations.push(newDonation);
-  return newDonation;
+  const response = await apiClient.post('/collections', donation);
+  return response.data;
 };
 
 export const updateDonation = async (id, donation) => {
-  const idx = donations.findIndex((d) => String(d.id) === String(id));
-  if (idx === -1) throw new Error('Donation not found');
-  donations[idx] = { ...donations[idx], ...donation };
-  return donations[idx];
+  const response = await apiClient.put(`/collections/${id}`, donation);
+  return response.data;
 };
 
 export const deleteDonation = async (id) => {
-  donations = donations.filter((d) => String(d.id) !== String(id));
+  await apiClient.delete(`/collections/${id}`);
   return { id, deleted: true };
 };
 
-export const getDonationsByMember = async (memberId) =>
-  donations.filter((d) => String(d.memberId) === String(memberId));
-
-export const getDonationsByDateRange = async (startDate, endDate) => {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  end.setHours(23, 59, 59, 999);
-  return donations.filter((d) => {
-    const date = new Date(d.donationDate);
-    return date >= start && date <= end;
-  });
+export const getDonationsByMember = async (memberId) => {
+  const response = await apiClient.get(`/collections/member/${memberId}`);
+  return response.data;
 };
 
-export const getDonationsByColony = async (colony) =>
-  donations.filter((d) => d.colony === colony);
+export const getDonationsByDateRange = async (startDate, endDate) => {
+  const response = await apiClient.get('/collections/search', {
+    params: { startDate, endDate, page: 0, size: 10000 },
+  });
+  const springPage = response.data;
+  return springPage.content || springPage;
+};
 
-export const getDonationsByPaymentMode = async (mode) =>
-  donations.filter((d) => d.paymentMode === mode);
+export const getDonationsByColony = async (colony) => {
+  const response = await apiClient.get('/collections/search', {
+    params: { colony },
+  });
+  const springPage = response.data;
+  return springPage.content || springPage;
+};
 
-export const getAllDonations = async () => donations;
+export const getDonationsByPaymentMode = async (mode) => {
+  const response = await apiClient.get('/collections/search', {
+    params: { paymentMode: mode },
+  });
+  const springPage = response.data;
+  return springPage.content || springPage;
+};
+
+export const getAllDonations = async () => {
+  const response = await apiClient.get('/collections');
+  return response.data;
+};
 
 const donationService = {
   getDonations, getDonationById, addDonation, updateDonation,

@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, TextField, Stack, Grid, MenuItem,
+  Button, TextField, Stack, Grid, MenuItem, CircularProgress,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import eventService from '../../services/eventService';
 
 const currentYear = new Date().getFullYear().toString();
 const years = Array.from({ length: 10 }, (_, i) => String(Number(currentYear) - 5 + i));
-const days = ['Pre-Festival', 'Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7', 'Day 8', 'Day 9', 'Day 10', 'Final Day', 'Daily'];
 
 const defaultForm = {
   eventName: '', eventCategory: '', festivalDay: '',
@@ -51,7 +50,7 @@ export default function EventForm({ open, editId, initial, onClose, onSaved }) {
       }
       onClose();
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || 'Failed to save event');
     } finally {
       setSaving(false);
     }
@@ -78,7 +77,7 @@ export default function EventForm({ open, editId, initial, onClose, onSaved }) {
             </Grid>
             <Grid item xs={12} sm={4}>
               <TextField label="Festival Day" fullWidth select value={form.festivalDay} onChange={(e) => setForm({ ...form, festivalDay: e.target.value })}>
-                {days.map((d) => <MenuItem key={d} value={d}>{d}</MenuItem>)}
+                {eventService.FESTIVAL_DAYS.map((d) => <MenuItem key={d} value={d}>{d}</MenuItem>)}
               </TextField>
             </Grid>
             <Grid item xs={12} sm={4}>
@@ -114,8 +113,10 @@ export default function EventForm({ open, editId, initial, onClose, onSaved }) {
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
+        <Button onClick={onClose} disabled={saving}>Cancel</Button>
+        <Button variant="contained" onClick={handleSave} disabled={saving} startIcon={saving ? <CircularProgress size={16} /> : null}>
+          {saving ? 'Saving...' : 'Save'}
+        </Button>
       </DialogActions>
     </Dialog>
   );

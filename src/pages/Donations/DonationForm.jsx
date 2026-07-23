@@ -10,6 +10,7 @@ import {
   MenuItem,
   Autocomplete,
   CircularProgress,
+  Box,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import { addDonation, updateDonation } from '../../services/donationService';
@@ -35,8 +36,11 @@ export default function DonationForm({ open, onClose, donation, onSaved }) {
       memberId: '',
       amount: '',
       paymentMode: '',
-      donationDate: new Date().toISOString().split('T')[0],
+      transactionId: '',
+      receiptNumber: '',
       collectorName: '',
+      colony: '',
+      collectionDate: new Date().toISOString().split('T')[0],
       remarks: '',
     },
   });
@@ -48,7 +52,8 @@ export default function DonationForm({ open, onClose, donation, onSaved }) {
     const load = async () => {
       setLoading(true);
       try {
-        const data = await getAllMembers();
+        const rawData = await getAllMembers();
+        const data = Array.isArray(rawData) ? rawData : (rawData?.content || []);
         setMembers(data);
       } catch {
         toast.error('Failed to load members');
@@ -65,8 +70,11 @@ export default function DonationForm({ open, onClose, donation, onSaved }) {
         memberId: '',
         amount: '',
         paymentMode: '',
-        donationDate: new Date().toISOString().split('T')[0],
+        transactionId: '',
+        receiptNumber: '',
         collectorName: '',
+        colony: '',
+        collectionDate: new Date().toISOString().split('T')[0],
         remarks: '',
       });
       return;
@@ -76,29 +84,57 @@ export default function DonationForm({ open, onClose, donation, onSaved }) {
         memberId: donation.memberId || '',
         amount: donation.amount || '',
         paymentMode: donation.paymentMode || '',
-        donationDate: donation.donationDate || '',
+        transactionId: donation.transactionId || '',
+        receiptNumber: donation.receiptNumber || '',
         collectorName: donation.collectorName || '',
+        colony: donation.colony || '',
+        collectionDate: donation.collectionDate || '',
         remarks: donation.remarks || '',
+      });
+    } else {
+      reset({
+        memberId: '',
+        amount: '',
+        paymentMode: '',
+        transactionId: '',
+        receiptNumber: '',
+        collectorName: '',
+        colony: '',
+        collectionDate: new Date().toISOString().split('T')[0],
+        remarks: '',
       });
     }
   }, [open, donation, reset]);
 
   const memberIdToMember = (id) => {
     if (!id) return null;
-    return members.find((m) => m.id === id) || null;
+    return members.find((m) => String(m.id) === String(id)) || null;
   };
 
   const selectedMember = memberIdToMember(selectedMemberId);
 
+  useEffect(() => {
+    if (selectedMember) {
+      setValue('colony', selectedMember.colony || '');
+    }
+  }, [selectedMember, setValue]);
+
   const onSubmit = async (data) => {
     setSubmitting(true);
     try {
-      const member = members.find((m) => m.id === data.memberId);
+      const member = members.find((m) => String(m.id) === String(data.memberId));
       const payload = {
-        ...data,
+        memberId: data.memberId ? Number(data.memberId) : null,
         amount: Number(data.amount),
-        memberName: member?.fullName || '',
-        colony: member?.colony || '',
+        paymentMode: data.paymentMode,
+        transactionId: data.transactionId || null,
+        receiptNumber: data.receiptNumber || null,
+        collectorName: data.collectorName || null,
+        colony: data.colony || member?.colony || null,
+        collectionDate: data.collectionDate || null,
+        remarks: data.remarks || null,
+        memberName: member?.name || '',
+        memberMobile: member?.mobile || '',
       };
       if (donation) {
         await updateDonation(donation.id, payload);
@@ -110,7 +146,8 @@ export default function DonationForm({ open, onClose, donation, onSaved }) {
       onClose();
       if (onSaved) onSaved();
     } catch (err) {
-      toast.error(err.message || 'Failed to save donation');
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to save donation';
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }
@@ -122,7 +159,9 @@ export default function DonationForm({ open, onClose, donation, onSaved }) {
       <form onSubmit={handleSubmit(onSubmit)}>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {loading ? (
-            <CircularProgress sx={{ alignSelf: 'center', my: 4 }} />
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
           ) : (
             <>
               <Controller
@@ -132,7 +171,7 @@ export default function DonationForm({ open, onClose, donation, onSaved }) {
                 render={({ field }) => (
                   <Autocomplete
                     options={members}
-                    getOptionLabel={(m) => `${m.id} - ${m.fullName} (${m.colony})`}
+                    getOptionLabel={(m) => `${m.id} - ${m.name} (${m.colony || ''})`}
                     value={memberIdToMember(field.value)}
                     onChange={(_, val) => field.onChange(val ? val.id : '')}
                     renderInput={(params) => (
@@ -147,7 +186,7 @@ export default function DonationForm({ open, onClose, donation, onSaved }) {
                 )}
               />
               {selectedMember && (
-                <TextField label="Selected Member" value={selectedMember.fullName} size="small" InputProps={{ readOnly: true }} disabled />
+                <TextField label="Selected Member" value={selectedMember.name} size="small" InputProps={{ readOnly: true }} disabled />
               )}
               <TextField
                 label="Amount (₹)"
@@ -173,18 +212,33 @@ export default function DonationForm({ open, onClose, donation, onSaved }) {
                 ))}
               </TextField>
               <TextField
-                label="Donation Date"
+                label="Collection Date"
                 type="date"
                 fullWidth
                 InputLabelProps={{ shrink: true }}
-                {...register('donationDate', { required: 'Date is required' })}
-                error={!!errors.donationDate}
-                helperText={errors.donationDate?.message}
+                {...register('collectionDate', { required: 'Date is required' })}
+                error={!!errors.collectionDate}
+                helperText={errors.collectionDate?.message}
+              />
+              <TextField
+                label="Transaction ID"
+                fullWidth
+                {...register('transactionId')}
+              />
+              <TextField
+                label="Receipt Number"
+                fullWidth
+                {...register('receiptNumber')}
               />
               <TextField
                 label="Collector Name"
                 fullWidth
                 {...register('collectorName')}
+              />
+              <TextField
+                label="Colony"
+                fullWidth
+                {...register('colony')}
               />
               <TextField
                 label="Remarks"
@@ -199,7 +253,7 @@ export default function DonationForm({ open, onClose, donation, onSaved }) {
         <DialogActions>
           <Button onClick={onClose} disabled={submitting}>Cancel</Button>
           <Button type="submit" variant="contained" disabled={submitting || loading}>
-            {submitting ? 'Saving...' : donation ? 'Update' : 'Save'}
+            {submitting ? <CircularProgress size={20} color="inherit" /> : donation ? 'Update' : 'Save'}
           </Button>
         </DialogActions>
       </form>

@@ -6,12 +6,12 @@ import {
   Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions,
   Chip, IconButton, Tooltip, InputAdornment, MenuItem, Grid,
   Avatar, FormControl, InputLabel, Select, TableSortLabel,
+  CircularProgress,
 } from '@mui/material';
 import { MdAdd, MdEdit, MdDelete, MdSearch, MdPhone, MdEmail, MdWhatsapp, MdVisibility } from 'react-icons/md';
 import { toast } from 'react-toastify';
 import volunteerService from '../../services/volunteerService';
 import VolunteerForm from './VolunteerForm';
-import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 
 const currentYear = new Date().getFullYear().toString();
 
@@ -72,14 +72,15 @@ export default function VolunteerList() {
       if (birthdayMonth) params.birthdayMonth = birthdayMonth;
       if (catFilter) params.category = catFilter;
       if (statusFilter) params.status = statusFilter;
+      if (keyword) params.keyword = keyword;
       const data = await volunteerService.searchFiltered(params);
       setVolunteers(data);
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || 'Failed to load volunteers');
     } finally {
       setLoading(false);
     }
-  }, [yearFilter, rolesParam, assignedDate, birthdayMonth, catFilter, statusFilter]);
+  }, [yearFilter, rolesParam, assignedDate, birthdayMonth, catFilter, statusFilter, keyword]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -88,11 +89,6 @@ export default function VolunteerList() {
     const vb = b[orderBy] || '';
     const cmp = typeof va === 'string' ? va.localeCompare(vb) : va - vb;
     return orderDir === 'asc' ? cmp : -cmp;
-  });
-
-  const filtered = sorted.filter((v) => {
-    if (keyword && !v.name?.toLowerCase().includes(keyword.toLowerCase()) && !v.mobile?.includes(keyword) && !v.email?.toLowerCase().includes(keyword.toLowerCase())) return false;
-    return true;
   });
 
   const handleSort = (col) => {
@@ -111,7 +107,7 @@ export default function VolunteerList() {
       toast.success('Volunteer deleted');
       setVolunteers((prev) => prev.filter((v) => v.id !== deleteTarget.id));
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || 'Failed to delete volunteer');
     } finally {
       setDeleting(false);
       setDeleteTarget(null);
@@ -138,7 +134,7 @@ export default function VolunteerList() {
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
         <Box>
           <Typography variant="h5" fontWeight={700}>{listTitle}</Typography>
-          <Typography variant="body2" color="text.secondary">{filtered.length} volunteer{filtered.length !== 1 ? 's' : ''}</Typography>
+          <Typography variant="body2" color="text.secondary">{sorted.length} volunteer{sorted.length !== 1 ? 's' : ''}</Typography>
         </Box>
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" size="small" onClick={() => navigate('/volunteers')}>Dashboard</Button>
@@ -181,7 +177,11 @@ export default function VolunteerList() {
         </CardContent>
       </Card>
 
-      {filtered.length === 0 && !loading ? (
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
+          <CircularProgress />
+        </Box>
+      ) : sorted.length === 0 ? (
         <Card variant="outlined" sx={{ borderRadius: 3, p: 6, textAlign: 'center' }}>
           <MdSearch size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
           <Typography variant="h6" color="text.secondary" mb={1}>No volunteers found</Typography>
@@ -190,68 +190,64 @@ export default function VolunteerList() {
         </Card>
       ) : (
         <Card variant="outlined" sx={{ borderRadius: 3 }}>
-          {loading ? <LoadingSkeleton rows={8} /> : (
-            <>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600, minWidth: 200 }}>
-                      <TableSortLabel active={orderBy==='name'} direction={orderBy==='name'?orderDir:'asc'} onClick={()=>handleSort('name')}>Volunteer</TableSortLabel>
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>
-                      <TableSortLabel active={orderBy==='role'} direction={orderBy==='role'?orderDir:'asc'} onClick={()=>handleSort('role')}>Role</TableSortLabel>
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Committee</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Contact</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>
-                      <TableSortLabel active={orderBy==='experience'} direction={orderBy==='experience'?orderDir:'asc'} onClick={()=>handleSort('experience')}>Experience</TableSortLabel>
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>
-                      <TableSortLabel active={orderBy==='status'} direction={orderBy==='status'?orderDir:'asc'} onClick={()=>handleSort('status')}>Status</TableSortLabel>
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 600 }} align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filtered.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((v) => (
-                    <TableRow key={v.id} hover sx={{ '&:last-child td': { border: 0 }, cursor: 'pointer' }} onClick={() => navigate('/volunteers/profile/' + v.id)}>
-                      <TableCell>
-                        <Stack direction="row" alignItems="center" spacing={1.5}>
-                          <Avatar sx={{ width: 36, height: 36, bgcolor: getRoleColor(v.role), fontSize: 14 }}>{v.name?.charAt(0)?.toUpperCase()}</Avatar>
-                          <Box>
-                            <Typography variant="body2" fontWeight={500}>{v.name}</Typography>
-                            <Typography variant="caption" color="text.secondary">{v.mobile}</Typography>
-                          </Box>
-                        </Stack>
-                      </TableCell>
-                      <TableCell><Chip label={v.role||'N/A'} size="small" sx={{ bgcolor: `${getRoleColor(v.role)}18`, color: getRoleColor(v.role), fontWeight: 500 }} /></TableCell>
-                      <TableCell><Chip label={v.category||'N/A'} size="small" variant="outlined" /></TableCell>
-                      <TableCell>
-                        <Stack direction="row" spacing={0.5}>
-                          {v.mobile && <>
-                            <Tooltip title="Call"><IconButton size="small" href={`tel:${v.mobile}`} onClick={e=>e.stopPropagation()}><MdPhone size={16}/></IconButton></Tooltip>
-                            <Tooltip title="WhatsApp"><IconButton size="small" href={`https://wa.me/${v.mobile.replace(/[^0-9]/g,'')}`} target="_blank" onClick={e=>e.stopPropagation()}><MdWhatsapp size={16}/></IconButton></Tooltip>
-                          </>}
-                          {v.email && <Tooltip title="Email"><IconButton size="small" href={`mailto:${v.email}`} onClick={e=>e.stopPropagation()}><MdEmail size={16}/></IconButton></Tooltip>}
-                        </Stack>
-                      </TableCell>
-                      <TableCell><Typography variant="body2">{v.experience||'-'}</Typography></TableCell>
-                      <TableCell><Chip label={v.status} size="small" color={v.status==='Active'?'success':'default'} /></TableCell>
-                      <TableCell align="right">
-                        <Stack direction="row" justifyContent="flex-end" spacing={0.5}>
-                          <Tooltip title="View Profile"><IconButton size="small" onClick={e=>{e.stopPropagation();navigate('/volunteers/profile/'+v.id)}}><MdVisibility size={16}/></IconButton></Tooltip>
-                          <Tooltip title="Edit"><IconButton size="small" onClick={e=>{e.stopPropagation();openEdit(v)}}><MdEdit size={16}/></IconButton></Tooltip>
-                          <Tooltip title="Delete"><IconButton size="small" onClick={e=>{e.stopPropagation();setDeleteTarget(v)}}><MdDelete size={16}/></IconButton></Tooltip>
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {filtered.length > rowsPerPage && (
-                <TablePagination component="div" count={filtered.length} page={page} onPageChange={(_,p)=>setPage(p)} rowsPerPage={rowsPerPage} onRowsPerPageChange={e=>{setRowsPerPage(parseInt(e.target.value,10));setPage(0)}} rowsPerPageOptions={[10,15,25,50]} />
-              )}
-            </>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 600, minWidth: 200 }}>
+                  <TableSortLabel active={orderBy==='name'} direction={orderBy==='name'?orderDir:'asc'} onClick={()=>handleSort('name')}>Volunteer</TableSortLabel>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>
+                  <TableSortLabel active={orderBy==='role'} direction={orderBy==='role'?orderDir:'asc'} onClick={()=>handleSort('role')}>Role</TableSortLabel>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Committee</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Contact</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>
+                  <TableSortLabel active={orderBy==='experience'} direction={orderBy==='experience'?orderDir:'asc'} onClick={()=>handleSort('experience')}>Experience</TableSortLabel>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>
+                  <TableSortLabel active={orderBy==='status'} direction={orderBy==='status'?orderDir:'asc'} onClick={()=>handleSort('status')}>Status</TableSortLabel>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 600 }} align="right">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {sorted.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((v) => (
+                <TableRow key={v.id} hover sx={{ '&:last-child td': { border: 0 }, cursor: 'pointer' }} onClick={() => navigate('/volunteers/profile/' + v.id)}>
+                  <TableCell>
+                    <Stack direction="row" alignItems="center" spacing={1.5}>
+                      <Avatar sx={{ width: 36, height: 36, bgcolor: getRoleColor(v.role), fontSize: 14 }}>{v.name?.charAt(0)?.toUpperCase()}</Avatar>
+                      <Box>
+                        <Typography variant="body2" fontWeight={500}>{v.name}</Typography>
+                        <Typography variant="caption" color="text.secondary">{v.mobile}</Typography>
+                      </Box>
+                    </Stack>
+                  </TableCell>
+                  <TableCell><Chip label={v.role||'N/A'} size="small" sx={{ bgcolor: `${getRoleColor(v.role)}18`, color: getRoleColor(v.role), fontWeight: 500 }} /></TableCell>
+                  <TableCell><Chip label={v.category||'N/A'} size="small" variant="outlined" /></TableCell>
+                  <TableCell>
+                    <Stack direction="row" spacing={0.5}>
+                      {v.mobile && <>
+                        <Tooltip title="Call"><IconButton size="small" href={`tel:${v.mobile}`} onClick={e=>e.stopPropagation()}><MdPhone size={16}/></IconButton></Tooltip>
+                        <Tooltip title="WhatsApp"><IconButton size="small" href={`https://wa.me/${v.mobile.replace(/[^0-9]/g,'')}`} target="_blank" onClick={e=>e.stopPropagation()}><MdWhatsapp size={16}/></IconButton></Tooltip>
+                      </>}
+                      {v.email && <Tooltip title="Email"><IconButton size="small" href={`mailto:${v.email}`} onClick={e=>e.stopPropagation()}><MdEmail size={16}/></IconButton></Tooltip>}
+                    </Stack>
+                  </TableCell>
+                  <TableCell><Typography variant="body2">{v.experience||'-'}</Typography></TableCell>
+                  <TableCell><Chip label={v.status} size="small" color={v.status==='Active'?'success':'default'} /></TableCell>
+                  <TableCell align="right">
+                    <Stack direction="row" justifyContent="flex-end" spacing={0.5}>
+                      <Tooltip title="View Profile"><IconButton size="small" onClick={e=>{e.stopPropagation();navigate('/volunteers/profile/'+v.id)}}><MdVisibility size={16}/></IconButton></Tooltip>
+                      <Tooltip title="Edit"><IconButton size="small" onClick={e=>{e.stopPropagation();openEdit(v)}}><MdEdit size={16}/></IconButton></Tooltip>
+                      <Tooltip title="Delete"><IconButton size="small" onClick={e=>{e.stopPropagation();setDeleteTarget(v)}}><MdDelete size={16}/></IconButton></Tooltip>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          {sorted.length > rowsPerPage && (
+            <TablePagination component="div" count={sorted.length} page={page} onPageChange={(_,p)=>setPage(p)} rowsPerPage={rowsPerPage} onRowsPerPageChange={e=>{setRowsPerPage(parseInt(e.target.value,10));setPage(0)}} rowsPerPageOptions={[10,15,25,50]} />
           )}
         </Card>
       )}

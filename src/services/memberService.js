@@ -1,74 +1,74 @@
-import membersData from '../mock-data/members';
+import apiClient from '../api/apiClient';
 
-let members = [...membersData];
-
-const paginate = (list, page = 1, limit = 10) => {
-  const start = (page - 1) * limit;
+export const getMembers = async ({ page = 1, limit = 10, sortBy = 'id', sortOrder = 'asc' } = {}) => {
+  const params = { page: page - 1, size: limit, sortBy, sortOrder };
+  const response = await apiClient.get('/members', { params });
+  const springPage = response.data;
   return {
-    data: list.slice(start, start + limit),
-    total: list.length,
-    page,
-    limit,
-    totalPages: Math.ceil(list.length / limit) || 1,
+    data: springPage.content || springPage,
+    total: springPage.totalElements ?? (Array.isArray(springPage) ? springPage.length : 0),
+    page, limit,
+    totalPages: springPage.totalPages ?? 1,
   };
 };
 
-export const getMembers = async ({ page = 1, limit = 10, sortBy = 'id', sortOrder = 'asc' } = {}) => {
-  const sorted = [...members].sort((a, b) => {
-    const aVal = a[sortBy] ?? '';
-    const bVal = b[sortBy] ?? '';
-    if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
-    if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
-    return 0;
-  });
-  return paginate(sorted, page, limit);
+export const getMemberById = async (id) => {
+  const response = await apiClient.get(`/members/${id}`);
+  return response.data;
 };
 
-export const getMemberById = async (id) =>
-  members.find((m) => String(m.id) === String(id)) || null;
-
 export const addMember = async (member) => {
-  const newMember = { ...member };
-  members.push(newMember);
-  return newMember;
+  const response = await apiClient.post('/members', member);
+  return response.data;
 };
 
 export const updateMember = async (id, member) => {
-  const idx = members.findIndex((m) => String(m.id) === String(id));
-  if (idx === -1) throw new Error('Member not found');
-  members[idx] = { ...members[idx], ...member };
-  return members[idx];
+  const response = await apiClient.put(`/members/${id}`, member);
+  return response.data;
 };
 
 export const deleteMember = async (id) => {
-  members = members.filter((m) => String(m.id) !== String(id));
+  await apiClient.delete(`/members/${id}`);
   return { id, deleted: true };
 };
 
 export const searchMembers = async (query) => {
-  const q = (query || '').toLowerCase();
-  return members.filter(
-    (m) =>
-      (m.fullName || '').toLowerCase().includes(q) ||
-      (m.mobileNumber || '').includes(q) ||
-      (m.colony || '').toLowerCase().includes(q)
-  );
+  const response = await apiClient.get('/members/search', { params: { keyword: query } });
+  return response.data;
 };
 
-export const filterMembers = async (criteria) => {
-  return members.filter((m) => {
-    if (criteria.status && m.status !== criteria.status) return false;
-    if (criteria.colony && m.colony !== criteria.colony) return false;
-    if (criteria.occupation && m.occupation !== criteria.occupation) return false;
-    return true;
-  });
+export const filterMembers = async (criteria = {}) => {
+  const params = {};
+  if (criteria.keyword) params.keyword = criteria.keyword;
+  if (criteria.status) params.status = criteria.status;
+  if (criteria.colony) params.colony = criteria.colony;
+  if (criteria.occupation) params.occupation = criteria.occupation;
+  if (criteria.festivalYear) params.festivalYear = criteria.festivalYear;
+  if (criteria.committeeCategory) params.committeeCategory = criteria.committeeCategory;
+  if (criteria.roleId) params.roleId = criteria.roleId;
+  const response = await apiClient.get('/members/search', { params });
+  return response.data;
 };
 
-export const getAllMembers = async () => members;
+export const getAllMembers = async () => {
+  const response = await apiClient.get('/members');
+  return response.data;
+};
+
+export const getMembersByRole = async (roleId) => {
+  const response = await apiClient.get(`/members/by-role/${roleId}`);
+  return response.data;
+};
+
+export const assignMemberRole = async (memberId, roleId) => {
+  const response = await apiClient.put(`/members/${memberId}/assign-role/${roleId}`);
+  return response.data;
+};
 
 const memberService = {
   getMembers, getMemberById, addMember, updateMember,
   deleteMember, searchMembers, filterMembers, getAllMembers,
+  getMembersByRole, assignMemberRole,
 };
 
 export default memberService;

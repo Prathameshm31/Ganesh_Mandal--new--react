@@ -1,6 +1,4 @@
-import volunteersData from '../mock-data/volunteers';
-
-let volunteers = [...volunteersData];
+import apiClient from '../api/apiClient';
 
 const CATEGORIES = [
   { name: 'Core Committee', roles: ['President','Vice President','Secretary','Joint Secretary','Treasurer','Joint Treasurer'] },
@@ -30,110 +28,82 @@ const CARD_CONFIGS = [
   { key: 'birthdayThisMonth', label: 'Birthdays This Month', icon: 'Gift', color: 'teal', filter: { type: 'birthdayMonth' } },
 ];
 
-const toFrontend = (v) => ({
-  id: String(v.id), name: v.name || '', mobile: v.mobile || '', email: v.email || '',
-  address: v.address || '', profilePhoto: v.profilePhoto || '', dateOfBirth: v.dateOfBirth || '',
-  gender: v.gender || '', bloodGroup: v.bloodGroup || '', emergencyContact: v.emergencyContact || '',
-  aadhaarNumber: v.aadhaarNumber || '', festivalYear: v.festivalYear || '',
-  category: v.category || '', role: v.role || '', skills: v.skills || '',
-  experience: v.experience || '', availability: v.availability || '',
-  joiningDate: v.joiningDate || '', status: v.status || 'Active',
-});
-
-export const getAllVolunteers = async () => volunteers.map(toFrontend);
+export const getAllVolunteers = async () => {
+  const response = await apiClient.get('/volunteers');
+  return response.data;
+};
 
 export const getVolunteerById = async (id) => {
-  const v = volunteers.find((vol) => String(vol.id) === String(id));
-  return v ? toFrontend(v) : null;
+  const response = await apiClient.get(`/volunteers/${id}`);
+  return response.data;
 };
 
 export const getVolunteerDetail = async (id) => {
-  const v = volunteers.find((vol) => String(vol.id) === String(id));
-  return v ? toFrontend(v) : null;
+  const response = await apiClient.get(`/volunteers/${id}/detail`);
+  return response.data;
 };
 
 export const searchVolunteers = async ({ keyword, category, role, status, festivalYear } = {}) => {
-  return volunteers
-    .filter((v) => {
-      if (keyword && !v.name.toLowerCase().includes(keyword.toLowerCase()) && !v.mobile.includes(keyword)) return false;
-      if (category && v.category !== category) return false;
-      if (role && v.role !== role) return false;
-      if (status && v.status !== status) return false;
-      if (festivalYear && v.festivalYear !== festivalYear) return false;
-      return true;
-    })
-    .map(toFrontend);
+  const params = {};
+  if (keyword) params.keyword = keyword;
+  if (category) params.category = category;
+  if (role) params.role = role;
+  if (status) params.status = status;
+  if (festivalYear) params.festivalYear = festivalYear;
+  const response = await apiClient.get('/volunteers/search', { params });
+  return response.data;
 };
 
 export const searchFiltered = async (params = {}) => {
-  return volunteers
-    .filter((v) => {
-      if (params.keyword && !v.name.toLowerCase().includes(params.keyword.toLowerCase())) return false;
-      if (params.category && v.category !== params.category) return false;
-      if (params.role && v.role !== params.role) return false;
-      if (params.status && v.status !== params.status) return false;
-      if (params.festivalYear && v.festivalYear !== params.festivalYear) return false;
-      if (params.roles) {
-        const rolesList = params.roles.split(',');
-        if (!rolesList.includes(v.role)) return false;
-      }
-      return true;
-    })
-    .map(toFrontend);
+  const response = await apiClient.get('/volunteers/search', { params });
+  return response.data;
 };
 
 export const getVolunteersByRoles = async (roles, festivalYear) => {
-  return volunteers
-    .filter((v) => {
-      if (!roles.includes(v.role)) return false;
-      if (festivalYear && v.festivalYear !== festivalYear) return false;
-      return true;
-    })
-    .map(toFrontend);
+  const params = { roles: Array.isArray(roles) ? roles.join(',') : roles };
+  if (festivalYear) params.festivalYear = festivalYear;
+  const response = await apiClient.get('/volunteers/by-roles', { params });
+  return response.data;
 };
 
 export const getByAssignedDate = async (date) => {
-  return volunteers.map(toFrontend);
+  const response = await apiClient.get('/volunteers/by-assigned-date', { params: { date } });
+  return response.data;
 };
 
 export const createVolunteer = async (data) => {
-  volunteers.push(data);
-  return toFrontend(data);
+  const response = await apiClient.post('/volunteers', data);
+  return response.data;
 };
 
 export const updateVolunteer = async (id, data) => {
-  const idx = volunteers.findIndex((v) => String(v.id) === String(id));
-  if (idx === -1) throw new Error('Volunteer not found');
-  volunteers[idx] = { ...volunteers[idx], ...data };
-  return toFrontend(volunteers[idx]);
+  const response = await apiClient.put(`/volunteers/${id}`, data);
+  return response.data;
 };
 
 export const deleteVolunteer = async (id) => {
-  volunteers = volunteers.filter((v) => String(v.id) !== String(id));
+  await apiClient.delete(`/volunteers/${id}`);
 };
 
 export const getVolunteerDashboard = async (festivalYear) => {
-  const filtered = festivalYear ? volunteers.filter((v) => v.festivalYear === festivalYear) : volunteers;
-  const roles = {};
-  filtered.forEach((v) => { roles[v.role] = (roles[v.role] || 0) + 1; });
-  return { total: filtered.length, roles };
+  const params = {};
+  if (festivalYear) params.festivalYear = festivalYear;
+  const response = await apiClient.get('/volunteer-dashboard', { params });
+  return response.data;
 };
 
 export const getDashboardSummary = async (festivalYear) => {
-  const filtered = festivalYear ? volunteers.filter((v) => v.festivalYear === festivalYear) : volunteers;
-  return { total: filtered.length, active: filtered.filter((v) => v.status === 'Active').length };
+  const params = {};
+  if (festivalYear) params.festivalYear = festivalYear;
+  const response = await apiClient.get('/volunteer-dashboard/summary', { params });
+  return response.data;
 };
 
 export const getBirthdays = async (festivalYear) => {
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  return volunteers
-    .filter((v) => {
-      if (!v.dateOfBirth) return false;
-      const dob = new Date(v.dateOfBirth);
-      return dob.getMonth() === currentMonth;
-    })
-    .map(toFrontend);
+  const params = {};
+  if (festivalYear) params.festivalYear = festivalYear;
+  const response = await apiClient.get('/volunteers/birthdays', { params });
+  return response.data;
 };
 
 const volunteerService = {

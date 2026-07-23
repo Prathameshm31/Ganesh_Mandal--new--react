@@ -2,36 +2,58 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Button, Card, CardContent, Stack, Chip, Avatar,
-  Grid, Divider, Table, TableHead, TableBody, TableRow, TableCell,
-  IconButton, Tooltip,
+  Grid, Table, TableHead, TableBody, TableRow, TableCell,
+  IconButton, Tooltip, CircularProgress,
 } from '@mui/material';
 import { MdArrowBack, MdPhone, MdEmail, MdWhatsapp, MdEdit } from 'react-icons/md';
 import { toast } from 'react-toastify';
 import volunteerService from '../../services/volunteerService';
-import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 
 export default function VolunteerProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await volunteerService.getVolunteerDetail(id);
       setDetail(data);
     } catch (err) {
-      toast.error('Failed to load volunteer details');
-      navigate('/volunteers/list');
+      setError(err.message || 'Failed to load volunteer details');
+      toast.error(err.message || 'Failed to load volunteer details');
     } finally {
       setLoading(false);
     }
-  }, [id, navigate]);
+  }, [id]);
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <LoadingSkeleton rows={12} />;
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 10 }}>
+        <CircularProgress />
+        <Typography variant="body2" color="text.secondary" ml={2}>Loading volunteer profile...</Typography>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ textAlign: 'center', py: 10 }}>
+        <Typography variant="h6" color="error" mb={1}>Failed to load profile</Typography>
+        <Typography variant="body2" color="text.secondary" mb={2}>{error}</Typography>
+        <Stack direction="row" spacing={1} justifyContent="center">
+          <Button variant="outlined" onClick={load}>Retry</Button>
+          <Button variant="contained" onClick={() => navigate('/volunteers/list')}>Back to List</Button>
+        </Stack>
+      </Box>
+    );
+  }
+
   if (!detail) return null;
 
   const Row = ({ label, value }) => (
@@ -145,6 +167,14 @@ export default function VolunteerProfile() {
           </Grid>
         )}
 
+        {detail.assignments?.length === 0 && (
+          <Grid item xs={12}>
+            <Card variant="outlined" sx={{ borderRadius: 3, p: 4, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">No assignments yet for this volunteer.</Typography>
+            </Card>
+          </Grid>
+        )}
+
         {detail.attendanceRecords?.length > 0 && (
           <Grid item xs={12}>
             <Card variant="outlined" sx={{ borderRadius: 3 }}>
@@ -173,6 +203,14 @@ export default function VolunteerProfile() {
                   </TableBody>
                 </Table>
               </CardContent>
+            </Card>
+          </Grid>
+        )}
+
+        {detail.attendanceRecords?.length === 0 && (
+          <Grid item xs={12}>
+            <Card variant="outlined" sx={{ borderRadius: 3, p: 4, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">No attendance records yet.</Typography>
             </Card>
           </Grid>
         )}

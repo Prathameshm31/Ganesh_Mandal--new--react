@@ -3,13 +3,13 @@ import {
   Box, Typography, Button, TextField, Table, TableHead, TableBody,
   TableRow, TableCell, Card, CardContent, Stack,
   Chip, IconButton, Tooltip, MenuItem, Grid, FormControl, InputLabel, Select,
+  CircularProgress,
 } from '@mui/material';
-import { MdCheckCircle, MdCancel, MdSchedule, MdSearch, MdRefresh } from 'react-icons/md';
+import { MdCheckCircle, MdCancel, MdSchedule, MdRefresh } from 'react-icons/md';
 import { toast } from 'react-toastify';
 import eventService from '../../services/eventService';
 import volunteerService from '../../services/volunteerService';
 import attendanceService from '../../services/attendanceService';
-import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 
 const currentYear = new Date().getFullYear().toString();
 
@@ -21,21 +21,24 @@ export default function Attendance() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [yearFilter, setYearFilter] = useState(currentYear);
   const [loading, setLoading] = useState(false);
+  const [loadingMeta, setLoadingMeta] = useState(true);
   const [saving, setSaving] = useState(false);
   const [stats, setStats] = useState(null);
 
-  const loadEvents = useCallback(async () => {
+  const loadMeta = useCallback(async () => {
+    setLoadingMeta(true);
     try {
-      const data = await eventService.searchEvents({ festivalYear: yearFilter });
-      setEvents(data);
-    } catch (err) { toast.error(err.message); }
-  }, [yearFilter]);
-
-  const loadVolunteers = useCallback(async () => {
-    try {
-      const data = await volunteerService.searchVolunteers({ festivalYear: yearFilter, status: 'Active' });
-      setVolunteers(data);
-    } catch (err) { toast.error(err.message); }
+      const [evData, volData] = await Promise.all([
+        eventService.searchEvents({ festivalYear: yearFilter }),
+        volunteerService.searchVolunteers({ festivalYear: yearFilter, status: 'Active' }),
+      ]);
+      setEvents(evData);
+      setVolunteers(volData);
+    } catch (err) {
+      toast.error(err.message || 'Failed to load events and volunteers');
+    } finally {
+      setLoadingMeta(false);
+    }
   }, [yearFilter]);
 
   const loadAttendance = useCallback(async () => {
@@ -47,8 +50,11 @@ export default function Attendance() {
     try {
       const data = await attendanceService.getAttendanceByEventAndDate(selectedEvent, selectedDate);
       setAttendance(data);
-    } catch (err) { toast.error(err.message); }
-    finally { setLoading(false); }
+    } catch (err) {
+      toast.error(err.message || 'Failed to load attendance');
+    } finally {
+      setLoading(false);
+    }
   }, [selectedEvent, selectedDate]);
 
   const loadStats = useCallback(async () => {
@@ -58,17 +64,12 @@ export default function Attendance() {
     } catch (_) {}
   }, [yearFilter]);
 
-  useEffect(() => { loadEvents(); loadVolunteers(); loadStats(); }, [loadEvents, loadVolunteers, loadStats]);
+  useEffect(() => { loadMeta(); loadStats(); }, [loadMeta, loadStats]);
   useEffect(() => { loadAttendance(); }, [loadAttendance]);
 
   const getStatus = (volId) => {
     const a = attendance.find((x) => String(x.volunteerId) === String(volId));
     return a ? a.status : null;
-  };
-
-  const getAttendanceId = (volId) => {
-    const a = attendance.find((x) => String(x.volunteerId) === String(volId));
-    return a ? a.id : null;
   };
 
   const mark = async (volunteer, status) => {
@@ -83,8 +84,11 @@ export default function Attendance() {
       toast.success(`${volunteer.name} marked ${status}`);
       loadAttendance();
       loadStats();
-    } catch (err) { toast.error(err.message); }
-    finally { setSaving(false); }
+    } catch (err) {
+      toast.error(err.message || 'Failed to mark attendance');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const selectedEventObj = events.find((e) => String(e.id) === String(selectedEvent));
@@ -122,7 +126,7 @@ export default function Attendance() {
             <Grid item xs={12} sm={4}>
               <FormControl size="small" fullWidth>
                 <InputLabel>Event</InputLabel>
-                <Select label="Event" value={selectedEvent} onChange={(e) => setSelectedEvent(e.target.value)}>
+                <Select label="Event" value={selectedEvent} onChange={(e) => setSelectedEvent(e.target.value)} disabled={loadingMeta}>
                   <MenuItem value="">Select Event</MenuItem>
                   {events.map((e) => <MenuItem key={e.id} value={e.id}>{e.eventName} {e.date ? `(${e.date})` : ''}</MenuItem>)}
                 </Select>
@@ -137,13 +141,24 @@ export default function Attendance() {
               </TextField>
             </Grid>
             <Grid item xs={12} sm={3}>
-              <Button fullWidth variant="outlined" startIcon={<MdRefresh />} onClick={() => { loadAttendance(); loadStats(); }}>Refresh</Button>
+              <Button fullWidth variant="outlined" startIcon={<MdRefresh />} onClick={() => { loadAttendance(); loadStats(); }} disabled={loading}>Refresh</Button>
             </Grid>
           </Grid>
         </CardContent>
       </Card>
 
-      {selectedEvent && (
+      {loadingMeta ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
+          <CircularProgress />
+          <Typography variant="body2" color="text.secondary" ml={2}>Loading events and volunteers...</Typography>
+        </Box>
+      ) : !selectedEvent ? (
+        <Card variant="outlined" sx={{ borderRadius: 3, p: 6, textAlign: 'center' }}>
+          <MdSchedule size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
+          <Typography variant="h6" color="text.secondary" mb={1}>Select an event and date</Typography>
+          <Typography variant="body2" color="text.secondary">Choose an event above to mark volunteer attendance.</Typography>
+        </Card>
+      ) : (
         <Card variant="outlined" sx={{ borderRadius: 3 }}>
           {selectedEventObj && (
             <CardContent sx={{ pb: 0 }}>
@@ -151,7 +166,11 @@ export default function Attendance() {
               <Typography variant="caption" color="text.secondary">{selectedEventObj.date} | {selectedEventObj.startTime || ''}{selectedEventObj.endTime ? ` - ${selectedEventObj.endTime}` : ''} | {selectedEventObj.venue || 'No venue'}</Typography>
             </CardContent>
           )}
-          {loading ? <LoadingSkeleton rows={5} /> : (
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
             <Table>
               <TableHead>
                 <TableRow>
@@ -163,71 +182,67 @@ export default function Attendance() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {volunteers.map((v) => {
-                  const currentStatus = getStatus(v.id);
-                  return (
-                    <TableRow key={v.id} hover sx={{ '&:last-child td': { border: 0 } }}>
-                      <TableCell>
-                        <Typography variant="body2" fontWeight={500}>{v.name}</Typography>
-                      </TableCell>
-                      <TableCell><Chip label={v.role || 'N/A'} size="small" variant="outlined" /></TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{v.mobile}</Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        {currentStatus ? (
-                          <Chip
-                            label={currentStatus}
-                            size="small"
-                            color={currentStatus === 'Present' ? 'success' : currentStatus === 'Absent' ? 'error' : 'warning'}
-                          />
-                        ) : (
-                          <Chip label="Not Marked" size="small" variant="outlined" color="default" />
-                        )}
-                      </TableCell>
-                      <TableCell align="center">
-                        <Stack direction="row" justifyContent="center" spacing={0.5}>
-                          <Tooltip title="Mark Present">
-                            <span>
-                              <IconButton size="small" color="success" onClick={() => mark(v, 'Present')} disabled={saving || currentStatus === 'Present'}>
-                                <MdCheckCircle size={18} />
-                              </IconButton>
-                            </span>
-                          </Tooltip>
-                          <Tooltip title="Mark Late">
-                            <span>
-                              <IconButton size="small" color="warning" onClick={() => mark(v, 'Late')} disabled={saving || currentStatus === 'Late'}>
-                                <MdSchedule size={18} />
-                              </IconButton>
-                            </span>
-                          </Tooltip>
-                          <Tooltip title="Mark Absent">
-                            <span>
-                              <IconButton size="small" color="error" onClick={() => mark(v, 'Absent')} disabled={saving || currentStatus === 'Absent'}>
-                                <MdCancel size={18} />
-                              </IconButton>
-                            </span>
-                          </Tooltip>
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-                {volunteers.length === 0 && (
+                {volunteers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} align="center"><Typography color="text.secondary" py={3}>No active volunteers for {yearFilter}</Typography></TableCell>
+                    <TableCell colSpan={5} align="center">
+                      <Typography color="text.secondary" py={3}>No active volunteers for {yearFilter}</Typography>
+                    </TableCell>
                   </TableRow>
+                ) : (
+                  volunteers.map((v) => {
+                    const currentStatus = getStatus(v.id);
+                    return (
+                      <TableRow key={v.id} hover sx={{ '&:last-child td': { border: 0 } }}>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight={500}>{v.name}</Typography>
+                        </TableCell>
+                        <TableCell><Chip label={v.role || 'N/A'} size="small" variant="outlined" /></TableCell>
+                        <TableCell>
+                          <Typography variant="body2">{v.mobile}</Typography>
+                        </TableCell>
+                        <TableCell align="center">
+                          {currentStatus ? (
+                            <Chip
+                              label={currentStatus}
+                              size="small"
+                              color={currentStatus === 'Present' ? 'success' : currentStatus === 'Absent' ? 'error' : 'warning'}
+                            />
+                          ) : (
+                            <Chip label="Not Marked" size="small" variant="outlined" color="default" />
+                          )}
+                        </TableCell>
+                        <TableCell align="center">
+                          <Stack direction="row" justifyContent="center" spacing={0.5}>
+                            <Tooltip title="Mark Present">
+                              <span>
+                                <IconButton size="small" color="success" onClick={() => mark(v, 'Present')} disabled={saving || currentStatus === 'Present'}>
+                                  <MdCheckCircle size={18} />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                            <Tooltip title="Mark Late">
+                              <span>
+                                <IconButton size="small" color="warning" onClick={() => mark(v, 'Late')} disabled={saving || currentStatus === 'Late'}>
+                                  <MdSchedule size={18} />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                            <Tooltip title="Mark Absent">
+                              <span>
+                                <IconButton size="small" color="error" onClick={() => mark(v, 'Absent')} disabled={saving || currentStatus === 'Absent'}>
+                                  <MdCancel size={18} />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
           )}
-        </Card>
-      )}
-
-      {!selectedEvent && (
-        <Card variant="outlined" sx={{ borderRadius: 3, p: 6, textAlign: 'center' }}>
-          <MdSearch size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
-          <Typography color="text.secondary">Select an event and date to mark attendance</Typography>
         </Card>
       )}
     </Box>

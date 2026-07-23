@@ -14,6 +14,7 @@ import {
   MdFestival,
   MdGroups,
 } from 'react-icons/md';
+import { toast } from 'react-toastify';
 import { activityService } from '../../services';
 
 const initiativeIcons = {
@@ -41,8 +42,9 @@ export default function SocialInitiatives() {
     const load = async () => {
       try {
         const data = await activityService.getActivities();
-        setActivities(data);
-      } catch {
+        setActivities(data || []);
+      } catch (err) {
+        toast.error(err.message || 'Failed to load social initiatives');
         setActivities([]);
       } finally {
         setLoading(false);
@@ -58,6 +60,18 @@ export default function SocialInitiatives() {
 
   if (loading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>;
+  }
+
+  if (activities.length === 0 && !loading) {
+    return (
+      <Box>
+        <Typography variant="h5" fontWeight={700} mb={0.5}>Social Initiatives</Typography>
+        <Typography variant="body2" color="text.secondary" mb={3}>
+          What Our Mandal Does Throughout the Year
+        </Typography>
+        <Typography color="text.secondary" textAlign="center" py={8}>No activities found</Typography>
+      </Box>
+    );
   }
 
   return (
