@@ -19,6 +19,7 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  CircularProgress,
 } from '@mui/material';
 import { MdAdd, MdEdit, MdDelete, MdReceipt } from 'react-icons/md';
 import { toast } from 'react-toastify';
@@ -40,7 +41,8 @@ export default function CashCollection() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getAllDonations();
+      const rawData = await getAllDonations();
+      const data = Array.isArray(rawData) ? rawData : (rawData?.content || []);
       setAllDonations(data);
     } catch {
       toast.error('Failed to load donations');
@@ -68,7 +70,8 @@ export default function CashCollection() {
       setDeleteTarget(null);
       load();
     } catch (err) {
-      toast.error(err.message || 'Failed to delete');
+      const msg = err?.response?.data?.message || err?.message || 'Failed to delete';
+      toast.error(msg);
     } finally {
       setDeleting(false);
     }
@@ -98,11 +101,18 @@ export default function CashCollection() {
       </Card>
 
       {loading ? (
-        <Typography>Loading...</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+          <CircularProgress />
+        </Box>
       ) : cashDonations.length === 0 ? (
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="h6" color="text.secondary">No cash collections found</Typography>
-          <Button variant="contained" startIcon={<MdAdd />} onClick={handleAdd} sx={{ mt: 2 }}>
+        <Paper sx={{ p: 6, textAlign: 'center' }}>
+          <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+            No cash collections yet
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Start by recording your first cash collection
+          </Typography>
+          <Button variant="contained" startIcon={<MdAdd />} onClick={handleAdd}>
             Add Cash Donation
           </Button>
         </Paper>
@@ -130,7 +140,7 @@ export default function CashCollection() {
                   <TableCell>
                     <Chip label={d.paymentMode} size="small" sx={{ backgroundColor: '#FF8F00', color: '#fff', fontWeight: 500 }} />
                   </TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{d.donationDate}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{d.collectionDate}</TableCell>
                   <TableCell>{d.colony}</TableCell>
                   <TableCell>{d.collectorName}</TableCell>
                   <TableCell>
@@ -157,7 +167,7 @@ export default function CashCollection() {
         <DialogActions>
           <Button onClick={() => { setDeleteDialogOpen(false); setDeleteTarget(null); }} disabled={deleting}>Cancel</Button>
           <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={deleting}>
-            {deleting ? 'Deleting...' : 'Delete'}
+            {deleting ? <CircularProgress size={20} color="inherit" /> : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

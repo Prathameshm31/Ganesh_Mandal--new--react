@@ -59,7 +59,9 @@ export default function NotificationManagement() {
     try {
       const data = await notificationService.getNotificationDashboard();
       setDashboard(data);
-    } catch { /* ignore */ }
+    } catch (err) {
+      toast.error(err.message || 'Failed to load notification stats');
+    }
   }, []);
 
   const loadHistory = useCallback(async () => {
@@ -68,20 +70,24 @@ export default function NotificationManagement() {
       if (historyFilters.status) filters.status = historyFilters.status;
       if (historyFilters.channel) filters.channel = historyFilters.channel;
       const data = await notificationService.getNotificationHistory(filters);
-      setHistory(data);
-    } catch { /* ignore */ }
+      setHistory(Array.isArray(data) ? data : data?.content || []);
+    } catch (err) {
+      toast.error(err.message || 'Failed to load notification history');
+    }
   }, [historyFilters]);
 
   const loadTemplates = useCallback(async () => {
     try {
       const data = await notificationService.getTemplates();
-      setTemplates(data);
-    } catch { /* ignore */ }
+      setTemplates(Array.isArray(data) ? data : data?.content || []);
+    } catch (err) {
+      toast.error(err.message || 'Failed to load templates');
+    }
   }, []);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
-    await Promise.all([loadDashboard(), loadHistory(), loadTemplates()]);
+    await Promise.allSettled([loadDashboard(), loadHistory(), loadTemplates()]);
     try { setEvents(await getAllEvents() || []); } catch {}
     try { setMembers(await getAllMembers() || []); } catch {}
     setLoading(false);
@@ -100,9 +106,9 @@ export default function NotificationManagement() {
     }
     let receivers = reminderForm.receivers;
     if (reminderForm.receiverGroup === 'All Members') {
-      receivers = members.map((m) => m.mobileNumber);
+      receivers = members.map((m) => m.mobile);
     } else if (reminderForm.receiverGroup === 'Volunteers') {
-      receivers = members.filter((m) => m.occupation === 'Volunteer').map((m) => m.mobileNumber);
+      receivers = members.filter((m) => m.occupation === 'Volunteer').map((m) => m.mobile);
     }
     try {
       await notificationService.sendReminder({

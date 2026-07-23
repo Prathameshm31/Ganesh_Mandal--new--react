@@ -18,6 +18,7 @@ import {
   Grid,
   Card,
   CardContent,
+  CircularProgress,
 } from '@mui/material';
 import {
   Dialog,
@@ -54,7 +55,7 @@ export default function DonationsList() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [rowsPerPage] = useState(10);
-  const [sortBy, setSortBy] = useState('donationDate');
+  const [sortBy, setSortBy] = useState('collectionDate');
   const [sortOrder, setSortOrder] = useState('desc');
 
   const [filters, setFilters] = useState({
@@ -75,7 +76,8 @@ export default function DonationsList() {
   const loadDonations = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getAllDonations();
+      const rawData = await getAllDonations();
+      const data = Array.isArray(rawData) ? rawData : (rawData?.content || []);
       setDonations(data);
     } catch {
       toast.error('Failed to load donations');
@@ -118,8 +120,8 @@ export default function DonationsList() {
   const colonies = [...new Set(donations.map((d) => d.colony).filter(Boolean))].sort();
 
   const filtered = donations.filter((d) => {
-    if (filters.fromDate && d.donationDate < filters.fromDate) return false;
-    if (filters.toDate && d.donationDate > filters.toDate) return false;
+    if (filters.fromDate && d.collectionDate < filters.fromDate) return false;
+    if (filters.toDate && d.collectionDate > filters.toDate) return false;
     const pmFilter = searchParams.get('paymentMode');
     if (pmFilter === 'Online') {
       if (!onlineModes.includes(d.paymentMode)) return false;
@@ -183,7 +185,8 @@ export default function DonationsList() {
       setDeleteTarget(null);
       loadDonations();
     } catch (err) {
-      toast.error(err.message || 'Failed to delete donation');
+      const msg = err?.response?.data?.message || err?.message || 'Failed to delete donation';
+      toast.error(msg);
     } finally {
       setDeleting(false);
     }
@@ -306,11 +309,18 @@ export default function DonationsList() {
       </Paper>
 
       {loading ? (
-        <Typography>Loading donations...</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+          <CircularProgress />
+        </Box>
       ) : paginated.length === 0 ? (
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="h6" color="text.secondary">No donations found</Typography>
-          <Button variant="contained" startIcon={<MdAdd />} onClick={handleAdd} sx={{ mt: 2 }}>
+        <Paper sx={{ p: 6, textAlign: 'center' }}>
+          <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+            {hasFilters ? 'No donations match your filters' : 'No donations yet'}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {hasFilters ? 'Try adjusting your search criteria' : 'Start by adding your first donation'}
+          </Typography>
+          <Button variant="contained" startIcon={<MdAdd />} onClick={handleAdd}>
             Add Donation
           </Button>
         </Paper>
@@ -325,7 +335,7 @@ export default function DonationsList() {
                     { id: 'memberName', label: 'Member' },
                     { id: 'amount', label: 'Amount' },
                     { id: 'paymentMode', label: 'Payment Mode' },
-                    { id: 'donationDate', label: 'Date' },
+                    { id: 'collectionDate', label: 'Date' },
                     { id: 'colony', label: 'Colony' },
                     { id: 'collectorName', label: 'Collector' },
                   ].map((col) => (
@@ -360,7 +370,7 @@ export default function DonationsList() {
                         }}
                       />
                     </TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{donation.donationDate}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{donation.collectionDate}</TableCell>
                     <TableCell>{donation.colony}</TableCell>
                     <TableCell>{donation.collectorName}</TableCell>
                     <TableCell>
@@ -410,7 +420,7 @@ export default function DonationsList() {
         <DialogActions>
           <Button onClick={() => { setDeleteDialogOpen(false); setDeleteTarget(null); }} disabled={deleting}>Cancel</Button>
           <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={deleting}>
-            {deleting ? 'Deleting...' : 'Delete'}
+            {deleting ? <CircularProgress size={20} color="inherit" /> : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

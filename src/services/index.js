@@ -8,3 +8,8 @@ export { default as prasadSponsorshipService } from './prasadSponsorshipService'
 export { default as volunteerService } from './volunteerService';
 export { default as eventService } from './eventService';
 export { default as attendanceService } from './attendanceService';
+export { default as notificationService } from './notificationService';
+export { default as settingService } from './settingService';
+export { default as roleService } from './roleService';
+export { default as permissionService } from './permissionService';
+export { default as userPermissionService } from './userPermissionService';

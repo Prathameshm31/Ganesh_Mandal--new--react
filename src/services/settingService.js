@@ -1,11 +1,13 @@
-import settings from '../mock-data/settings';
+import apiClient from '../api/apiClient';
 
-let currentSettings = { ...settings };
-
-export const getAllSettings = async () => ({ ...currentSettings });
+export const getAllSettings = async () => {
+  const response = await apiClient.get('/settings');
+  return response.data;
+};
 
 export const updateSettings = async (newSettings) => {
-  currentSettings = { ...currentSettings, ...newSettings };
+  const response = await apiClient.put('/settings', newSettings);
+  return response.data;
 };
 
 const settingService = { getAllSettings, updateSettings };

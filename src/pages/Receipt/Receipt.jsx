@@ -156,7 +156,7 @@ export default function Receipt() {
             </Box>
             <Box>
               <Typography variant="body2" color="text.secondary">Donation Date</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 600 }}>{donation.donationDate}</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 600 }}>{donation.collectionDate}</Typography>
             </Box>
             <Box>
               <Typography variant="body2" color="text.secondary">Collected By</Typography>

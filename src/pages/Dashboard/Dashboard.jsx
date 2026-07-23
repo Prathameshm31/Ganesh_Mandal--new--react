@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Box, Grid, Typography, Paper, Alert, Button, Chip,
+  Box, Grid, Typography, Paper, Alert, Button, Chip, CircularProgress,
 } from '@mui/material';
+import { useAuth } from '../../context/AuthContext';
 import {
   Users, IndianRupee, Wallet, Wifi, Calendar,
   Target, Trophy, UserPlus, ArrowRight,
@@ -32,19 +33,38 @@ function formatIndian(n) {
   return `₹${formatted}`;
 }
 
-const statCardsConfig = [
-  { title: 'Total Members', key: 'totalMembers', icon: Users, color: 'blue', format: (v) => v?.toLocaleString('en-IN'), nav: '/members' },
-  { title: 'Total Collection', key: 'totalDonations', icon: IndianRupee, color: 'orange', format: (v) => formatIndian(v), nav: '/donations' },
-  { title: 'Cash Collection', key: 'cashCollection', icon: Wallet, color: 'green', format: (v) => formatIndian(v), nav: '/donations?paymentMode=Cash' },
-  { title: 'Online Collection', key: 'onlineCollection', icon: Wifi, color: 'purple', format: (v) => formatIndian(v), nav: '/donations?paymentMode=Online' },
-  { title: 'This Year', key: 'thisYearCollection', icon: Calendar, color: 'indigo', format: (v) => formatIndian(v), nav: `/donations?year=${new Date().getFullYear()}` },
-  { title: 'Collection Goal', key: 'goalProgress', icon: Target, color: 'amber', format: (v) => `${Math.round(v)}%` },
-];
+function useStatCards(filterFn) {
+  const allStatCards = [
+    { title: 'Total Members', key: 'totalMembers', icon: Users, color: 'blue', format: (v) => v?.toLocaleString('en-IN'), nav: '/members', perm: 'USERS:VIEW' },
+    { title: 'Total Collection', key: 'totalCollection', icon: IndianRupee, color: 'orange', format: (v) => formatIndian(v), nav: '/donations', perm: 'DONATIONS:VIEW' },
+    { title: 'Cash Collection', key: 'cashCollection', icon: Wallet, color: 'green', format: (v) => formatIndian(v), nav: '/donations?paymentMode=Cash', perm: 'DONATIONS:VIEW' },
+    { title: 'Online Collection', key: 'onlineCollection', icon: Wifi, color: 'purple', format: (v) => formatIndian(v), nav: '/donations?paymentMode=Online', perm: 'DONATIONS:VIEW' },
+    { title: 'This Year', key: 'thisYearCollection', icon: Calendar, color: 'indigo', format: (v) => formatIndian(v), nav: `/donations?year=${new Date().getFullYear()}`, perm: 'DONATIONS:VIEW' },
+    { title: 'Collection Goal', key: 'goalProgress', icon: Target, color: 'amber', format: (v) => `${Math.round(v)}%`, perm: 'DONATIONS:VIEW' },
+  ];
+  return allStatCards.filter(filterFn);
+}
 
 const sectionVariants = {
   hidden: { opacity: 0, y: 24 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: 'easeOut' } },
 };
+
+function SectionError({ message }) {
+  return (
+    <Alert severity="error" sx={{ borderRadius: 2, mb: 2 }}>
+      {message}
+    </Alert>
+  );
+}
+
+function SectionEmpty({ message }) {
+  return (
+    <Box sx={{ py: 4, textAlign: 'center' }}>
+      <Typography color="text.secondary" variant="body2">{message}</Typography>
+    </Box>
+  );
+}
 
 function SectionHeader({ icon: Icon, title, subtitle }) {
   return (
@@ -64,51 +84,72 @@ function SectionHeader({ icon: Icon, title, subtitle }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const statCardsConfig = useStatCards(c => !c.perm || hasPermission(c.perm));
+
   const [stats, setStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
   const [monthlyData, setMonthlyData] = useState([]);
+  const [monthlyLoading, setMonthlyLoading] = useState(true);
+
   const [pieData, setPieData] = useState([]);
+  const [pieLoading, setPieLoading] = useState(true);
+
   const [colonyData, setColonyData] = useState([]);
+  const [colonyLoading, setColonyLoading] = useState(true);
+
   const [trendData, setTrendData] = useState([]);
+  const [trendLoading, setTrendLoading] = useState(true);
+
   const [topDonors, setTopDonors] = useState([]);
+  const [topDonorsLoading, setTopDonorsLoading] = useState(true);
+
   const [recentMembers, setRecentMembers] = useState([]);
-  const [topContributor, setTopContributor] = useState(null);
+  const [activityLoading, setActivityLoading] = useState(true);
+
   const [todayPrasad, setTodayPrasad] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [prasadLoading, setPrasadLoading] = useState(true);
 
   const fetchDashboardData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [statsRes, monthlyRes, pieRes, colonyRes, trendRes, topDonorsRes, activityRes] = await Promise.all([
-        dashboardService.getDashboardStats(),
-        dashboardService.getMonthlyCollection(),
-        dashboardService.getPaymentModeBreakdown(),
-        dashboardService.getColonyWiseCollection(),
-        dashboardService.getYearlyTrend(),
-        dashboardService.getTopDonors(10),
-        dashboardService.getRecentActivity(),
-      ]);
-      setStats(statsRes);
-      setMonthlyData(monthlyRes);
-      setPieData(pieRes);
-      setColonyData(colonyRes);
-      setTrendData(trendRes);
-      setTopDonors(topDonorsRes);
-      setRecentMembers(activityRes.recentMembers);
-      if (topDonorsRes.length > 0) {
-        setTopContributor(topDonorsRes[0]);
+    setStatsLoading(true);
+    setMonthlyLoading(true);
+    setPieLoading(true);
+    setColonyLoading(true);
+    setTrendLoading(true);
+    setTopDonorsLoading(true);
+    setActivityLoading(true);
+    setPrasadLoading(true);
+
+    const settle = async (label, setter, setterLoading, fn) => {
+      try {
+        const result = await fn();
+        setter(result);
+      } catch (err) {
+        const msg = err?.message || `Failed to load ${label}`;
+        toast.error(msg);
+      } finally {
+        setterLoading(false);
       }
-      const today = new Date().toISOString().split('T')[0];
-      const prasadThisYear = await prasadSponsorshipService.getPrasadByYear(String(new Date().getFullYear()));
-      setTodayPrasad(prasadThisYear.filter((p) => p.prasadDate === today));
-    } catch (err) {
-      const msg = err?.message || 'Failed to load dashboard data';
-      setError(msg);
-      toast.error(msg);
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    await Promise.allSettled([
+      settle('stats', setStats, setStatsLoading, () => dashboardService.getDashboardStats()),
+      settle('monthly collection', setMonthlyData, setMonthlyLoading, () => dashboardService.getMonthlyCollection()),
+      settle('payment breakdown', setPieData, setPieLoading, () => dashboardService.getPaymentModeBreakdown()),
+      settle('colony collection', setColonyData, setColonyLoading, () => dashboardService.getColonyWiseCollection()),
+      settle('yearly trend', setTrendData, setTrendLoading, () => dashboardService.getYearlyTrend()),
+      settle('top donors', setTopDonors, setTopDonorsLoading, () => dashboardService.getTopDonors(10)),
+      settle('recent activity', setRecentMembers, setActivityLoading, async () => {
+        const res = await dashboardService.getRecentActivity();
+        return res.recentMembers || [];
+      }),
+      settle('prasad', setTodayPrasad, setPrasadLoading, async () => {
+        const today = new Date().toISOString().split('T')[0];
+        const all = await prasadSponsorshipService.getPrasadByYear(String(new Date().getFullYear()));
+        return all.filter((p) => p.prasadDate === today);
+      }),
+    ]);
   }, []);
 
   useEffect(() => {
@@ -123,13 +164,30 @@ export default function Dashboard() {
     goalProgress,
   } : null;
 
-  if (error && !stats) {
+  const topContributor = topDonors.length > 0 ? topDonors[0] : null;
+
+  if (statsLoading && !stats) {
+    return (
+      <Box sx={{ maxWidth: 1400, mx: 'auto' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+          <CircularProgress />
+        </Box>
+      </Box>
+    );
+  }
+
+  if (!statsLoading && !stats) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>
-        <Typography color="text.secondary">
-          Something went wrong. Please try refreshing the page.
-        </Typography>
+        <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+          Failed to load dashboard data. Please try refreshing the page.
+        </Alert>
+        <Box sx={{ textAlign: 'center', mt: 4 }}>
+          <CircularProgress size={24} />
+          <Typography color="text.secondary" sx={{ mt: 2 }}>
+            Retrying...
+          </Typography>
+        </Box>
       </Box>
     );
   }
@@ -161,7 +219,7 @@ export default function Dashboard() {
               value={enhancedStats ? card.format(enhancedStats[card.key]) : '—'}
               icon={<card.icon size={22} />}
               color={card.color}
-              loading={loading}
+              loading={statsLoading}
               index={idx}
               subtitle={card.key === 'goalProgress' ? `of ${formatIndian(collectionGoal)}` : card.subtitle}
               onClick={card.nav ? () => navigate(card.nav) : undefined}
@@ -169,7 +227,7 @@ export default function Dashboard() {
           </Grid>
         ))}
 
-        {loading ? (
+        {topDonorsLoading ? (
           <Grid item xs={12} sm={6} md={4} lg={3}>
             <StatsCard loading index={5} />
           </Grid>
@@ -186,7 +244,7 @@ export default function Dashboard() {
           </Grid>
         )}
 
-        {loading ? (
+        {activityLoading ? (
           <Grid item xs={12} sm={6} md={4} lg={3}>
             <StatsCard loading index={6} />
           </Grid>
@@ -194,7 +252,7 @@ export default function Dashboard() {
           <Grid item xs={12} sm={6} md={4} lg={3}>
             <StatsCard
               title="Recently Added"
-              value={recentMembers.length > 0 ? recentMembers[0]?.fullName || '—' : '—'}
+              value={recentMembers.length > 0 ? recentMembers[0]?.name || '—' : '—'}
               icon={<UserPlus size={22} />}
               color="teal"
               subtitle={recentMembers.length > 0 ? `+${recentMembers.length} this month` : 'No new members'}
@@ -211,9 +269,9 @@ export default function Dashboard() {
             <ChartCard
               title="Monthly Collection"
               subtitle="Donations received per month"
-              loading={loading}
-              isEmpty={!loading && (!monthlyData || monthlyData.length === 0)}
-              emptyMessage="No monthly data yet"
+              loading={monthlyLoading}
+              isEmpty={!monthlyLoading && (!monthlyData || monthlyData.length === 0)}
+              emptyMessage="No monthly data available"
               index={0}
             >
               <MonthlyChart data={monthlyData} height={280} />
@@ -223,9 +281,9 @@ export default function Dashboard() {
             <ChartCard
               title="Cash vs Online"
               subtitle="Payment method comparison"
-              loading={loading}
-              isEmpty={!loading && (!pieData || pieData.length === 0)}
-              emptyMessage="No payment data yet"
+              loading={pieLoading}
+              isEmpty={!pieLoading && (!pieData || pieData.length === 0)}
+              emptyMessage="No payment data available"
               index={1}
             >
               <PaymentPieChart data={pieData} height={280} />
@@ -235,9 +293,9 @@ export default function Dashboard() {
             <ChartCard
               title="Year-wise Collection Trend"
               subtitle="Annual donation totals"
-              loading={loading}
-              isEmpty={!loading && (!trendData || trendData.length === 0)}
-              emptyMessage="No trend data yet"
+              loading={trendLoading}
+              isEmpty={!trendLoading && (!trendData || trendData.length === 0)}
+              emptyMessage="No trend data available"
               index={2}
             >
               <TrendChart data={trendData} height={280} />
@@ -247,9 +305,9 @@ export default function Dashboard() {
             <ChartCard
               title="Colony-wise Collection"
               subtitle="Total collections by colony"
-              loading={loading}
-              isEmpty={!loading && (!colonyData || colonyData.length === 0)}
-              emptyMessage="No colony data yet"
+              loading={colonyLoading}
+              isEmpty={!colonyLoading && (!colonyData || colonyData.length === 0)}
+              emptyMessage="No colony data available"
               index={3}
             >
               <ColonyChart data={colonyData} height={300} />
@@ -259,9 +317,9 @@ export default function Dashboard() {
             <ChartCard
               title="Top 10 Contributors"
               subtitle="Ranked by total donation amount"
-              loading={loading}
-              isEmpty={!loading && (!topDonors || topDonors.length === 0)}
-              emptyMessage="No contributor data yet"
+              loading={topDonorsLoading}
+              isEmpty={!topDonorsLoading && (!topDonors || topDonors.length === 0)}
+              emptyMessage="No contributor data available"
               index={4}
             >
               <TopContributorsChart data={topDonors} height={300} />
@@ -286,8 +344,10 @@ export default function Dashboard() {
                 {goalProgress}%
               </Typography>
             </Box>
-            {loading ? (
+            {statsLoading ? (
               <LoadingSkeleton type="text" count={2} />
+            ) : !stats ? (
+              <SectionEmpty message="No goal data available" />
             ) : (
               <AnimatePresence mode="wait">
                 <motion.div
@@ -351,7 +411,7 @@ export default function Dashboard() {
                 View All
               </Button>
             </Box>
-            {loading ? (
+            {statsLoading ? (
               <LoadingSkeleton type="text" count={5} />
             ) : stats?.currentYearMurti ? (
               <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
@@ -389,9 +449,7 @@ export default function Dashboard() {
                 </Box>
               </Box>
             ) : (
-              <Typography color="text.secondary" variant="body2" sx={{ py: 3, textAlign: 'center' }}>
-                No murti record for {new Date().getFullYear()}
-              </Typography>
+              <SectionEmpty message={`No murti record for ${new Date().getFullYear()}`} />
             )}
           </Paper>
         </Grid>
@@ -416,7 +474,7 @@ export default function Dashboard() {
                 View All
               </Button>
             </Box>
-            {loading ? (
+            {prasadLoading ? (
               <LoadingSkeleton type="text" count={3} />
             ) : todayPrasad.length > 0 ? (
               <Box>
@@ -462,9 +520,7 @@ export default function Dashboard() {
                 ))}
               </Box>
             ) : (
-              <Typography color="text.secondary" variant="body2" sx={{ py: 3, textAlign: 'center' }}>
-                No prasad scheduled for today
-              </Typography>
+              <SectionEmpty message="No prasad scheduled for today" />
             )}
           </Paper>
         </Grid>
@@ -489,12 +545,10 @@ export default function Dashboard() {
                 View All
               </Button>
             </Box>
-            {loading ? (
+            {activityLoading ? (
               <LoadingSkeleton type="table" count={4} />
             ) : recentMembers.length === 0 ? (
-              <Typography color="text.secondary" variant="body2" sx={{ py: 3, textAlign: 'center' }}>
-                No new members added yet
-              </Typography>
+              <SectionEmpty message="No new members added yet" />
             ) : (
               <Box>
                 {recentMembers.slice(0, 5).map((m, i) => (
@@ -533,11 +587,11 @@ export default function Dashboard() {
                           flexShrink: 0,
                         }}
                       >
-                        {m.fullName?.charAt(0)?.toUpperCase() || '?'}
+                        {m.name?.charAt(0)?.toUpperCase() || '?'}
                       </Box>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Typography variant="body2" fontWeight={600} noWrap>
-                          {m.fullName}
+                          {m.name}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                           {m.colony || '—'} · {m.joinDate || '—'}

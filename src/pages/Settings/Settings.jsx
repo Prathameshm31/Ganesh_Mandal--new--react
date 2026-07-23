@@ -10,6 +10,7 @@ import {
   Switch,
   FormControlLabel,
   Divider,
+  Alert,
 } from '@mui/material';
 import { MdSave, MdNotifications } from 'react-icons/md';
 import { toast } from 'react-toastify';
@@ -20,6 +21,7 @@ import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [mandal, setMandal] = useState({
     name: 'Shree Ganesh Mandal',
     registrationNumber: 'MAH/2020/GANESH/001',
@@ -63,6 +65,8 @@ export default function Settings() {
   }, []);
 
   const loadSettings = async () => {
+    setLoading(true);
+    setLoadError('');
     try {
       const settings = await settingService.getAllSettings();
       if (settings.mandal_name) setMandal(prev => ({ ...prev, name: settings.mandal_name }));
@@ -79,8 +83,8 @@ export default function Settings() {
       if (settings.branch) setBank(prev => ({ ...prev, branch: settings.branch }));
       if (settings.upi_id) setUpi({ upiId: settings.upi_id });
       if (settings.collection_goal) setCollectionGoal(settings.collection_goal);
-    } catch {
-      // use defaults
+    } catch (err) {
+      setLoadError(err.message || 'Failed to load settings');
     }
     try {
       const nc = await getNotificationConfig();
@@ -99,8 +103,8 @@ export default function Settings() {
           whatsappApiUrl: nc.whatsappApiUrl || '',
         });
       }
-    } catch {
-      // use defaults
+    } catch (err) {
+      toast.error(err.message || 'Failed to load notification config');
     } finally {
       setLoading(false);
     }
@@ -152,6 +156,11 @@ export default function Settings() {
   return (
     <Box>
       <Typography variant="h5" fontWeight={700} mb={3}>Settings</Typography>
+      {loadError && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {loadError} — showing defaults. You can still save new settings.
+        </Alert>
+      )}
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>

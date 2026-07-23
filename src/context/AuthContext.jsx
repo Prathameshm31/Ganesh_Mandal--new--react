@@ -1,11 +1,7 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import apiClient, { extractErrorMessage } from '../api/apiClient';
 
 const AuthContext = createContext(null);
-
-const USERS = {
-  admin: { id: 1, username: 'admin', name: 'Admin User', role: 'admin', password: 'admin123' },
-  user:  { id: 2, username: 'user', name: 'Regular User', role: 'user', password: 'user123' },
-};
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
@@ -18,39 +14,39 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
-      const stored = localStorage.getItem('ganeshMandalAuthUser');
+      const stored = localStorage.getItem('ganeshMandalUser');
       if (stored) return JSON.parse(stored);
     } catch {}
-    const defaultUser = { id: 1, username: 'admin', name: 'Admin User', role: 'admin' };
-    localStorage.setItem('ganeshMandalAuthUser', JSON.stringify(defaultUser));
-    return defaultUser;
+    return null;
   });
-
-  useEffect(() => {
-    try {
-      if (user) {
-        localStorage.setItem('ganeshMandalAuthUser', JSON.stringify(user));
-      } else {
-        localStorage.removeItem('ganeshMandalAuthUser');
-      }
-    } catch {
-      // localStorage unavailable
-    }
-  }, [user]);
+  const [loading, setLoading] = useState(false);
 
   const login = useCallback(async (username, password) => {
-    const matched = USERS[username];
-    if (!matched || matched.password !== password) {
-      throw new Error('Invalid username or password');
+    setLoading(true);
+    try {
+      const response = await apiClient.post('/auth/login', { username, password });
+      const data = response.data;
+      setUser(data);
+      localStorage.setItem('ganeshMandalUser', JSON.stringify(data));
+      localStorage.setItem('ganeshMandalUserToken', btoa(username + ':' + password));
+      return data;
+    } catch (error) {
+      throw new Error(extractErrorMessage(error));
+    } finally {
+      setLoading(false);
     }
-    const { password: _, ...userData } = matched;
-    setUser(userData);
-    return userData;
   }, []);
 
   const logout = useCallback(() => {
     setUser(null);
+    localStorage.removeItem('ganeshMandalUser');
+    localStorage.removeItem('ganeshMandalUserToken');
   }, []);
+
+  const hasPermission = useCallback((permissionCode) => {
+    if (!user?.permissions) return false;
+    return user.permissions.includes(permissionCode);
+  }, [user]);
 
   const value = useMemo(
     () => ({
@@ -58,8 +54,10 @@ export function AuthProvider({ children }) {
       isAuthenticated: !!user,
       login,
       logout,
+      loading,
+      hasPermission,
     }),
-    [user, login, logout],
+    [user, login, logout, loading, hasPermission],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

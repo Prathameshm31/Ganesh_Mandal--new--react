@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Paper, Card, CardContent, Chip, Avatar, Stack,
+  CircularProgress,
 } from '@mui/material';
 import {
   Users, UserCheck, Shield, Calendar, Camera, DollarSign,
@@ -10,7 +11,6 @@ import {
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import volunteerService from '../../services/volunteerService';
-import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 
 const currentYear = new Date().getFullYear().toString();
 
@@ -83,9 +83,11 @@ export default function VolunteerDashboard() {
   const [summary, setSummary] = useState(null);
   const [dash, setDash] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const [s, d] = await Promise.all([
         volunteerService.getDashboardSummary(currentYear),
@@ -94,7 +96,8 @@ export default function VolunteerDashboard() {
       setSummary(s);
       setDash(d);
     } catch (err) {
-      toast.error(err.message);
+      setError(err.message || 'Failed to load dashboard');
+      toast.error(err.message || 'Failed to load dashboard');
     } finally {
       setLoading(false);
     }
@@ -102,7 +105,24 @@ export default function VolunteerDashboard() {
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <LoadingSkeleton rows={10} />;
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 10 }}>
+        <CircularProgress />
+        <Typography variant="body2" color="text.secondary" ml={2}>Loading dashboard...</Typography>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ textAlign: 'center', py: 10 }}>
+        <Typography variant="h6" color="error" mb={1}>Failed to load dashboard</Typography>
+        <Typography variant="body2" color="text.secondary" mb={2}>{error}</Typography>
+        <Typography variant="body2" color="primary" sx={{ cursor: 'pointer' }} onClick={load}>Retry</Typography>
+      </Box>
+    );
+  }
 
   const handleCardClick = (cardConfig) => {
     const { path, params } = buildNavParams(cardConfig.filter, currentYear);
@@ -130,6 +150,13 @@ export default function VolunteerDashboard() {
           );
         })}
       </Box>
+
+      {!dash?.todayAssignments?.length && !dash?.upcomingAssignments?.length && !dash?.birthdayVolunteers?.length && (
+        <Card variant="outlined" sx={{ borderRadius: 3, p: 6, textAlign: 'center', mb: 2 }}>
+          <Typography variant="h6" color="text.secondary" mb={1}>No assignments or birthdays yet</Typography>
+          <Typography variant="body2" color="text.secondary">Volunteer assignments and birthdays will appear here once data is available.</Typography>
+        </Card>
+      )}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
         {dash?.todayAssignments?.length > 0 && (

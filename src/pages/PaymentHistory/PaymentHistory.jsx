@@ -4,6 +4,7 @@ import {
   TableContainer, TableHead, TableRow, Chip, Pagination,
   CircularProgress, Alert
 } from '@mui/material';
+import { toast } from 'react-toastify';
 import { getAllDonations } from '../../services/donationService';
 
 const onlineModes = ['UPI', 'Google Pay', 'PhonePe', 'Paytm', 'Bank Transfer'];
@@ -18,13 +19,14 @@ export default function PaymentHistory() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const all = await getAllDonations();
+      const res = await getAllDonations();
+      const all = Array.isArray(res) ? res : (res?.content || []);
       const total = all.length;
       setTotalPages(Math.ceil(total / perPage) || 1);
       const start = (page - 1) * perPage;
       setDonations(all.slice(start, start + perPage));
-    } catch {
-      // ignore
+    } catch (err) {
+      toast.error(err.message || 'Failed to load payment history');
     } finally {
       setLoading(false);
     }
@@ -80,7 +82,7 @@ export default function PaymentHistory() {
                         variant="outlined"
                       />
                     </TableCell>
-                    <TableCell>{d.donationDate}</TableCell>
+                    <TableCell>{d.collectionDate}</TableCell>
                     <TableCell>{d.collectorName}</TableCell>
                   </TableRow>
                 ))}

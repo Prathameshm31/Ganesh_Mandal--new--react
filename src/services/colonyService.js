@@ -1,28 +1,27 @@
-import coloniesData from '../mock-data/colonies';
+import apiClient from '../api/apiClient';
 
-let colonies = [...coloniesData];
-let nextId = colonies.length > 0 ? Math.max(...colonies.map((c) => c.id)) + 1 : 1;
+export const getColonies = async () => {
+  const response = await apiClient.get('/colonies');
+  return response.data;
+};
 
-export const getColonies = async () => colonies;
-
-export const getColonyById = async (id) =>
-  colonies.find((c) => c.id === Number(id)) || null;
+export const getColonyById = async (id) => {
+  const response = await apiClient.get(`/colonies/${id}`);
+  return response.data;
+};
 
 export const addColony = async (colony) => {
-  const newColony = { ...colony, id: nextId++ };
-  colonies.push(newColony);
-  return newColony;
+  const response = await apiClient.post('/colonies', colony);
+  return response.data;
 };
 
 export const updateColony = async (id, colony) => {
-  const idx = colonies.findIndex((c) => c.id === Number(id));
-  if (idx === -1) throw new Error('Colony not found');
-  colonies[idx] = { ...colonies[idx], ...colony };
-  return colonies[idx];
+  const response = await apiClient.put(`/colonies/${id}`, colony);
+  return response.data;
 };
 
 export const deleteColony = async (id) => {
-  colonies = colonies.filter((c) => c.id !== Number(id));
+  await apiClient.delete(`/colonies/${id}`);
   return { id, deleted: true };
 };
 

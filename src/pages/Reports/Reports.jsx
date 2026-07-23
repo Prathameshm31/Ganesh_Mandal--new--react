@@ -31,6 +31,12 @@ import { getAllMembers } from '../../services/memberService';
 
 const tabs = ['Daily', 'Monthly', 'Yearly', 'Colony-wise', 'Cash', 'Online', 'Pending', 'Top Donors'];
 
+const asArray = (res) => {
+  if (Array.isArray(res)) return res;
+  if (res && Array.isArray(res.content)) return res.content;
+  return [];
+};
+
 const onlineModes = ['UPI', 'Google Pay', 'PhonePe', 'Paytm', 'Bank Transfer'];
 
 export default function Reports() {
@@ -66,7 +72,7 @@ export default function Reports() {
             const total = donations.reduce((s, d) => s + d.amount, 0);
             const dailyMap = {};
             donations.forEach(d => {
-              dailyMap[d.donationDate] = (dailyMap[d.donationDate] || 0) + d.amount;
+              dailyMap[d.collectionDate] = (dailyMap[d.collectionDate] || 0) + d.amount;
             });
             const chartData = Object.entries(dailyMap).sort((a, b) => a[0].localeCompare(b[0])).map(([date, amount]) => ({ date, amount }));
             result = { donations, total, chartData };
@@ -80,7 +86,7 @@ export default function Reports() {
             const monthlyMap = {};
             const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             donations.forEach(d => {
-              const m = d.donationDate.substring(0, 7);
+              const m = d.collectionDate.substring(0, 7);
               monthlyMap[m] = (monthlyMap[m] || 0) + d.amount;
             });
             const chartData = Object.entries(monthlyMap).sort((a, b) => a[0].localeCompare(b[0])).map(([ym, amount]) => {
@@ -107,7 +113,7 @@ export default function Reports() {
             break;
           }
           case 'Online': {
-            const all = await donationService.getAllDonations();
+            const all = asArray(await donationService.getAllDonations());
             const donations = all.filter(d => onlineModes.includes(d.paymentMode));
             const total = donations.reduce((s, d) => s + d.amount, 0);
             result = { donations, total };
@@ -115,12 +121,12 @@ export default function Reports() {
           }
           case 'Pending': {
             const members = allMembers.length ? allMembers : await getAllMembers();
-            const allDonations = await donationService.getAllDonations();
+            const allDonations = asArray(await donationService.getAllDonations());
             const currentYear = new Date().getFullYear().toString();
-            const pending = members.filter(m => !allDonations.some(d => d.memberId === m.id && d.donationDate.startsWith(currentYear)));
+            const pending = members.filter(m => !allDonations.some(d => d.memberId === m.id && d.collectionDate.startsWith(currentYear)));
             const withLastDonation = pending.map(m => {
-              const last = allDonations.filter(d => d.memberId === m.id).sort((a, b) => b.donationDate.localeCompare(a.donationDate))[0];
-              return { ...m, lastDonationYear: last?.donationDate?.substring(0, 4) || 'Never' };
+              const last = allDonations.filter(d => d.memberId === m.id).sort((a, b) => b.collectionDate.localeCompare(a.collectionDate))[0];
+              return { ...m, lastDonationYear: last?.collectionDate?.substring(0, 4) || 'Never' };
             });
             result = { members: withLastDonation };
             break;
@@ -225,7 +231,7 @@ export default function Reports() {
               </Card>
             )}
             {data.donations?.length > 0 && renderTable(
-              [{ key: 'memberName', label: 'Member' }, { key: 'amount', label: 'Amount', render: (r) => `₹${r.amount}` }, { key: 'donationDate', label: 'Date' }, { key: 'paymentMode', label: 'Mode' }],
+              [{ key: 'memberName', label: 'Member' }, { key: 'amount', label: 'Amount', render: (r) => `₹${r.amount}` }, { key: 'collectionDate', label: 'Date' }, { key: 'paymentMode', label: 'Mode' }],
               data.donations, 'id'
             )}
           </Box>
@@ -306,7 +312,7 @@ export default function Reports() {
               </CardContent>
             </Card>
             {data.donations?.length > 0 ? renderTable(
-              [{ key: 'memberName', label: 'Member' }, { key: 'amount', label: 'Amount', render: (r) => `₹${r.amount}` }, { key: 'donationDate', label: 'Date' }, { key: 'receiptNumber', label: 'Receipt' }],
+              [{ key: 'memberName', label: 'Member' }, { key: 'amount', label: 'Amount', render: (r) => `₹${r.amount}` }, { key: 'collectionDate', label: 'Date' }, { key: 'receiptNumber', label: 'Receipt' }],
               data.donations, 'id'
             ) : <Typography color="text.secondary" textAlign="center" py={4}>No cash donations found</Typography>}
           </Box>
@@ -322,7 +328,7 @@ export default function Reports() {
               </CardContent>
             </Card>
             {data.donations?.length > 0 ? renderTable(
-              [{ key: 'memberName', label: 'Member' }, { key: 'amount', label: 'Amount', render: (r) => `₹${r.amount}` }, { key: 'paymentMode', label: 'Mode' }, { key: 'donationDate', label: 'Date' }],
+              [{ key: 'memberName', label: 'Member' }, { key: 'amount', label: 'Amount', render: (r) => `₹${r.amount}` }, { key: 'paymentMode', label: 'Mode' }, { key: 'collectionDate', label: 'Date' }],
               data.donations, 'id'
             ) : <Typography color="text.secondary" textAlign="center" py={4}>No online donations found</Typography>}
           </Box>
@@ -337,7 +343,7 @@ export default function Reports() {
               </CardContent>
             </Card>
             {data.members?.length > 0 ? renderTable(
-              [{ key: 'id', label: 'ID' }, { key: 'fullName', label: 'Name' }, { key: 'mobileNumber', label: 'Mobile' }, { key: 'colony', label: 'Colony' }, { key: 'lastDonationYear', label: 'Last Donation' }],
+              [{ key: 'id', label: 'ID' }, { key: 'name', label: 'Name' }, { key: 'mobile', label: 'Mobile' }, { key: 'colony', label: 'Colony' }, { key: 'lastDonationYear', label: 'Last Donation' }],
               data.members, 'id'
             ) : <Typography color="text.secondary" textAlign="center" py={4}>All members have donated this year</Typography>}
           </Box>

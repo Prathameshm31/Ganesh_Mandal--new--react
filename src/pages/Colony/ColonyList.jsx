@@ -88,8 +88,8 @@ export default function ColonyList() {
     }
   };
 
-  const totalMembers = colonies.reduce((s, c) => s + c.totalMembers, 0);
-  const totalCollection = colonies.reduce((s, c) => s + c.totalCollection, 0);
+  const totalMembers = colonies.reduce((s, c) => s + (c.totalMembers || 0), 0);
+  const totalCollection = colonies.reduce((s, c) => s + (c.totalCollection || 0), 0);
 
   if (loading) {
     return <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>;
@@ -102,58 +102,63 @@ export default function ColonyList() {
         <Button variant="contained" startIcon={<MdAdd />} onClick={openAdd}>Add Colony</Button>
       </Box>
 
-      <Grid container spacing={2} mb={3}>
-        {[
-          { label: 'Total Colonies', value: colonies.length, icon: <MdLocationCity />, color: 'linear-gradient(135deg, #1565c0, #42a5f5)' },
-          { label: 'Total Members', value: totalMembers, icon: <MdPeople />, color: 'linear-gradient(135deg, #2e7d32, #66bb6a)' },
-          { label: 'Total Collection', value: `₹${totalCollection.toLocaleString()}`, icon: <MdAttachMoney />, color: 'linear-gradient(135deg, #e65100, #ff9800)' },
-        ].map(stat => (
-          <Grid item xs={12} sm={4} key={stat.label}>
-            <Card sx={{ background: stat.color, color: '#fff' }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <Box sx={{ fontSize: 28 }}>{stat.icon}</Box>
-                  <Typography variant="body2" sx={{ opacity: 0.9 }}>{stat.label}</Typography>
-                </Box>
-                <Typography variant="h5" fontWeight={700}>{stat.value}</Typography>
-              </CardContent>
-            </Card>
+      {colonies.length === 0 ? (
+        <Typography color="text.secondary" textAlign="center" py={8}>No colonies found</Typography>
+      ) : (
+        <>
+          <Grid container spacing={2} mb={3}>
+            {[
+              { label: 'Total Colonies', value: colonies.length, icon: <MdLocationCity />, color: 'linear-gradient(135deg, #1565c0, #42a5f5)' },
+              { label: 'Total Members', value: totalMembers, icon: <MdPeople />, color: 'linear-gradient(135deg, #2e7d32, #66bb6a)' },
+              { label: 'Total Collection', value: `₹${totalCollection.toLocaleString()}`, icon: <MdAttachMoney />, color: 'linear-gradient(135deg, #e65100, #ff9800)' },
+            ].map(stat => (
+              <Grid item xs={12} sm={4} key={stat.label}>
+                <Card sx={{ background: stat.color, color: '#fff' }}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <Box sx={{ fontSize: 28 }}>{stat.icon}</Box>
+                      <Typography variant="body2" sx={{ opacity: 0.9 }}>{stat.label}</Typography>
+                    </Box>
+                    <Typography variant="h5" fontWeight={700}>{stat.value}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
           </Grid>
-        ))}
-      </Grid>
 
-      <Grid container spacing={3}>
-        {colonies.map(colony => {
-          const pct = colony.totalCollection + colony.pendingCollection > 0
-            ? Math.round((colony.totalCollection / (colony.totalCollection + colony.pendingCollection)) * 100)
-            : 0;
-          return (
-            <Grid item xs={12} sm={6} md={4} key={colony.id}>
-              <Card sx={{ height: '100%' }}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                    <Box>
-                      <Typography variant="h6" fontWeight={700}>{colony.name}</Typography>
-                      <Typography variant="body2" color="text.secondary">{colony.area} - {colony.pincode}</Typography>
-                    </Box>
-                    <Box>
-                      <IconButton size="small" onClick={() => openEdit(colony)}><MdEdit /></IconButton>
-                      <IconButton size="small" color="error" onClick={() => setDeleteTarget(colony)}><MdDelete /></IconButton>
-                    </Box>
-                  </Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', my: 1 }}>
-                    <Typography variant="body2">Members: <strong>{colony.totalMembers}</strong></Typography>
-                    <Typography variant="body2">Collection: <strong>₹{colony.totalCollection.toLocaleString()}</strong></Typography>
-                  </Box>
-                  <Typography variant="body2" color="error" mb={1}>Pending: ₹{colony.pendingCollection.toLocaleString()}</Typography>
-                  <LinearProgress variant="determinate" value={pct} sx={{ height: 8, borderRadius: 4 }} />
-                  <Typography variant="caption" color="text.secondary" mt={0.5}>{pct}% collected</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          );
-        })}
-      </Grid>
+          <Grid container spacing={3}>
+            {colonies.map(colony => {
+              const total = (colony.totalCollection || 0) + (colony.pendingCollection || 0);
+              const pct = total > 0 ? Math.round(((colony.totalCollection || 0) / total) * 100) : 0;
+              return (
+                <Grid item xs={12} sm={6} md={4} key={colony.id}>
+                  <Card sx={{ height: '100%' }}>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                        <Box>
+                          <Typography variant="h6" fontWeight={700}>{colony.name}</Typography>
+                          <Typography variant="body2" color="text.secondary">{colony.area} - {colony.pincode}</Typography>
+                        </Box>
+                        <Box>
+                          <IconButton size="small" onClick={() => openEdit(colony)}><MdEdit /></IconButton>
+                          <IconButton size="small" color="error" onClick={() => setDeleteTarget(colony)}><MdDelete /></IconButton>
+                        </Box>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', my: 1 }}>
+                        <Typography variant="body2">Members: <strong>{colony.totalMembers}</strong></Typography>
+                        <Typography variant="body2">Collection: <strong>₹{(colony.totalCollection || 0).toLocaleString()}</strong></Typography>
+                      </Box>
+                      <Typography variant="body2" color="error" mb={1}>Pending: ₹{(colony.pendingCollection || 0).toLocaleString()}</Typography>
+                      <LinearProgress variant="determinate" value={pct} sx={{ height: 8, borderRadius: 4 }} />
+                      <Typography variant="caption" color="text.secondary" mt={0.5}>{pct}% collected</Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              );
+            })}
+          </Grid>
+        </>
+      )}
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editColony ? 'Edit Colony' : 'Add Colony'}</DialogTitle>

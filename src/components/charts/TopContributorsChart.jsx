@@ -27,7 +27,7 @@ const CustomTooltip = ({ active, payload, label }) => {
           boxShadow: 4,
         }}
       >
-        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>{d.fullName}</Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>{d.memberName}</Typography>
         <Typography variant="body2" color="primary.main" fontWeight={700}>
           {formatIndian(payload[0].value)}
         </Typography>

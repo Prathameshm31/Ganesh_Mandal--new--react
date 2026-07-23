@@ -5,6 +5,7 @@ import {
   DialogContentText,
   DialogActions,
   Button,
+  CircularProgress,
 } from '@mui/material';
 import { useState } from 'react';
 import { toast } from 'react-toastify';
@@ -17,7 +18,7 @@ export default function DeleteDialog({ open, onClose, member, onDeleted }) {
     setDeleting(true);
     try {
       await deleteMember(member.id);
-      toast.success(`Member "${member.fullName}" deleted successfully`);
+      toast.success(`Member "${member.name}" deleted successfully`);
       onClose();
       if (onDeleted) onDeleted();
     } catch (err) {
@@ -32,13 +33,13 @@ export default function DeleteDialog({ open, onClose, member, onDeleted }) {
       <DialogTitle>Delete Member</DialogTitle>
       <DialogContent>
         <DialogContentText>
-          Are you sure you want to delete <strong>{member?.fullName}</strong> ({member?.id})? This action cannot be undone.
+          Are you sure you want to delete <strong>{member?.name}</strong> ({member?.id})? This action cannot be undone.
         </DialogContentText>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={deleting}>Cancel</Button>
         <Button onClick={handleDelete} color="error" variant="contained" disabled={deleting}>
-          {deleting ? 'Deleting...' : 'Delete'}
+          {deleting ? <CircularProgress size={20} color="inherit" /> : 'Delete'}
         </Button>
       </DialogActions>
     </Dialog>

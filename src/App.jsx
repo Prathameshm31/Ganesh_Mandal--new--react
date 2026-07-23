@@ -1,6 +1,6 @@
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import { ThemeModeProvider } from './context/ThemeContext';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './styles/global.css';
@@ -34,13 +34,27 @@ import Attendance from './pages/Volunteer/Attendance';
 import VolunteerProfile from './pages/Volunteer/VolunteerProfile';
 import ForgotPassword from './pages/Login/ForgotPassword';
 import NotFound from './pages/Error/NotFound';
+import Forbidden from './pages/Error/Forbidden';
+import UserPermissions from './pages/Permissions/UserPermissions';
+import PermissionDashboard from './pages/Permissions/PermissionDashboard';
+import RoleList from './pages/RoleManagement/RoleList';
 
 function ProtectedRoute() {
+  const { isAuthenticated } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <Outlet />;
 }
 
 function PublicRoute() {
+  const { isAuthenticated } = useAuth();
+  if (isAuthenticated) return <Navigate to="/" replace />;
   return <Outlet />;
+}
+
+export function PermissionGate({ permission, children }) {
+  const { hasPermission } = useAuth();
+  if (permission && !hasPermission(permission)) return null;
+  return children;
 }
 
 export default function App() {
@@ -75,6 +89,10 @@ export default function App() {
                 <Route path="/volunteers/events" element={<EventList />} />
                 <Route path="/volunteers/attendance" element={<Attendance />} />
                 <Route path="/volunteers/profile/:id" element={<VolunteerProfile />} />
+                <Route path="/permissions" element={<UserPermissions />} />
+                <Route path="/permissions/dashboard" element={<PermissionDashboard />} />
+                <Route path="/roles" element={<RoleList />} />
+                <Route path="/403" element={<Forbidden />} />
               </Route>
             </Route>
 
