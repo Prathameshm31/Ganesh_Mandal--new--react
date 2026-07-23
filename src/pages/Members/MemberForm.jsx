@@ -75,7 +75,7 @@ export default function MemberForm({ open, onClose, member, onSaved }) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>{isEdit ? 'Edit Member' : 'Add Member'}</DialogTitle>
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(onSubmit)} autoComplete="off">
         <DialogContent dividers>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
@@ -169,11 +169,11 @@ export default function MemberForm({ open, onClose, member, onSaved }) {
             </Grid>
             <Grid item xs={12} sm={6}>
               <Controller name="username" control={control}
-                render={({ field }) => <TextField {...field} label="Username" fullWidth placeholder="Auto: uses mobile if empty" />} />
+                render={({ field }) => <TextField {...field} label="Username" fullWidth placeholder="Auto: uses mobile if empty" autoComplete="new-username" />} />
             </Grid>
             <Grid item xs={12} sm={6}>
               <Controller name="password" control={control}
-                render={({ field }) => <TextField {...field} label="Password" fullWidth type="password" placeholder="Default: changeme" />} />
+                render={({ field }) => <TextField {...field} label="Password" fullWidth type="password" placeholder="Default: changeme" autoComplete="new-password" />} />
             </Grid>
             <Grid item xs={12}>
               <Controller name="notes" control={control}
