@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
       const data = response.data;
       setUser(data);
       localStorage.setItem('ganeshMandalUser', JSON.stringify(data));
-      localStorage.setItem('ganeshMandalUserToken', btoa(username + ':' + password));
+      localStorage.setItem('ganeshMandalUserToken', data.token);
       return data;
     } catch (error) {
       throw new Error(extractErrorMessage(error));
@@ -37,11 +37,27 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      await apiClient.post('/auth/logout');
+    } catch {}
     setUser(null);
     localStorage.removeItem('ganeshMandalUser');
     localStorage.removeItem('ganeshMandalUserToken');
   }, []);
+
+  const changePassword = useCallback(async (currentPassword, newPassword) => {
+    const response = await apiClient.post('/auth/change-password', {
+      currentPassword,
+      newPassword,
+    });
+    if (user) {
+      const updated = { ...user, firstLogin: false };
+      setUser(updated);
+      localStorage.setItem('ganeshMandalUser', JSON.stringify(updated));
+    }
+    return response.data;
+  }, [user]);
 
   const hasPermission = useCallback((permissionCode) => {
     if (!user?.permissions) return false;
@@ -54,10 +70,11 @@ export function AuthProvider({ children }) {
       isAuthenticated: !!user,
       login,
       logout,
+      changePassword,
       loading,
       hasPermission,
     }),
-    [user, login, logout, loading, hasPermission],
+    [user, login, logout, changePassword, loading, hasPermission],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
