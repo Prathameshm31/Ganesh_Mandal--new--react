@@ -3,8 +3,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import {
   TextField,
   Button,
-  FormControlLabel,
-  Checkbox,
   Typography,
   Box,
   CircularProgress,
@@ -17,47 +15,70 @@ import { useAuth } from '../../context/AuthContext';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login, loading } = useAuth();
-  const [username, setUsername] = useState('');
+  const { login, loading, user } = useAuth();
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [remember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const validateForm = () => {
+    const errors = {};
+    if (!email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = 'Invalid email format';
+    }
+    if (!password) {
+      errors.password = 'Password is required';
+    }
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!username || !password) {
-      setError('Please fill in all fields');
-      return;
-    }
     setError('');
+    if (!validateForm()) return;
+
     try {
-      await login(username, password);
+      const data = await login(email.trim(), password);
       toast.success('Login successful');
-      navigate('/');
+      if (data.firstLogin) {
+        navigate('/change-password');
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       setError(err.message || 'Invalid credentials');
     }
   };
 
   return (
-    <Box component="form" onSubmit={handleSubmit}>
+    <Box component="form" onSubmit={handleSubmit} noValidate>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
         <TextField
-          label="Username"
-          value={username}
-          onChange={e => setUsername(e.target.value)}
+          label="Email Address"
+          type="email"
+          value={email}
+          onChange={e => { setEmail(e.target.value); setFieldErrors(prev => ({ ...prev, email: '' })); }}
           fullWidth
           autoFocus
           disabled={loading}
+          error={!!fieldErrors.email}
+          helperText={fieldErrors.email}
+          autoComplete="email"
         />
         <TextField
           label="Password"
           type={showPassword ? 'text' : 'password'}
           value={password}
-          onChange={e => setPassword(e.target.value)}
+          onChange={e => { setPassword(e.target.value); setFieldErrors(prev => ({ ...prev, password: '' })); }}
           fullWidth
           disabled={loading}
+          error={!!fieldErrors.password}
+          helperText={fieldErrors.password}
+          autoComplete="current-password"
           InputProps={{
             endAdornment: (
               <InputAdornment position="end">
@@ -68,11 +89,7 @@ export default function LoginPage() {
             ),
           }}
         />
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <FormControlLabel
-            control={<Checkbox checked={remember} onChange={e => setRemember(e.target.checked)} disabled={loading} />}
-            label="Remember me"
-          />
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
           <Typography
             component={Link}
             to="/forgot-password"

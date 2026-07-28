@@ -27,12 +27,14 @@ import Notifications from './pages/Notifications/Notifications';
 import Settings from './pages/Settings/Settings';
 import Receipt from './pages/Receipt/Receipt';
 import LoginPage from './pages/Login/LoginPage';
+import ChangePassword from './pages/Login/ChangePassword';
 import VolunteerDashboard from './pages/Volunteer/VolunteerDashboard';
 import VolunteerList from './pages/Volunteer/VolunteerList';
 import EventList from './pages/Volunteer/EventList';
 import Attendance from './pages/Volunteer/Attendance';
 import VolunteerProfile from './pages/Volunteer/VolunteerProfile';
 import ForgotPassword from './pages/Login/ForgotPassword';
+import ResetPassword from './pages/Login/ResetPassword';
 import NotFound from './pages/Error/NotFound';
 import Forbidden from './pages/Error/Forbidden';
 import UserPermissions from './pages/Permissions/UserPermissions';
@@ -100,6 +102,8 @@ export default function App() {
               <Route element={<AuthLayout><Outlet /></AuthLayout>}>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/change-password" element={<ChangePassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
               </Route>
             </Route>
 
