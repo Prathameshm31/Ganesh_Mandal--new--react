@@ -27,6 +27,7 @@ import Notifications from './pages/Notifications/Notifications';
 import Settings from './pages/Settings/Settings';
 import Receipt from './pages/Receipt/Receipt';
 import LoginPage from './pages/Login/LoginPage';
+import RegisterPage from './pages/Login/RegisterPage';
 import ChangePassword from './pages/Login/ChangePassword';
 import VolunteerDashboard from './pages/Volunteer/VolunteerDashboard';
 import VolunteerList from './pages/Volunteer/VolunteerList';
@@ -101,6 +102,7 @@ export default function App() {
             <Route element={<PublicRoute />}>
               <Route element={<AuthLayout><Outlet /></AuthLayout>}>
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/change-password" element={<ChangePassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
