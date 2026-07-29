@@ -33,7 +33,6 @@ export default function AuthLayout({ children }) {
           textAlign="center"
           mb={3}
         >
-          Ganesh Mandal Management
         </Typography>
         {children}
       </Paper>
