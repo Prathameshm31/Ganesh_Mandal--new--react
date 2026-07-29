@@ -19,6 +19,7 @@ const columns = [
   { id: 'name', label: 'Full Name', sortable: true },
   { id: 'mobile', label: 'Mobile', sortable: true },
   { id: 'roles', label: 'Role(s)', sortable: false },
+  { id: 'registrationSource', label: 'Source', sortable: false },
   { id: 'committeeCategory', label: 'Category', sortable: true },
   { id: 'festivalYear', label: 'Year', sortable: true },
   { id: 'status', label: 'Status', sortable: true },
@@ -218,6 +219,10 @@ export default function MembersList() {
                           ))
                         : <Typography variant="caption" color="text.disabled">No role</Typography>
                       }
+                    </TableCell>
+                    <TableCell>
+                      <Chip label={member.registrationSource === 'PUBLIC_REGISTRATION' ? 'Public' : 'Admin'} size="small"
+                        color={member.registrationSource === 'PUBLIC_REGISTRATION' ? 'info' : 'default'} variant="outlined" />
                     </TableCell>
                     <TableCell>{member.committeeCategory || '-'}</TableCell>
                     <TableCell>{member.festivalYear || '-'}</TableCell>

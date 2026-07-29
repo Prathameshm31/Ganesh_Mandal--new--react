@@ -114,6 +114,12 @@ export default function LoginPage() {
         >
           {loading ? <CircularProgress size={24} color="inherit" /> : 'Login'}
         </Button>
+        <Typography variant="body2" textAlign="center" sx={{ mt: 1 }}>
+          Don't have an account?{' '}
+          <Link to="/register" style={{ color: 'inherit' }}>
+            Register Now
+          </Link>
+        </Typography>
       </Box>
     </Box>
   );
