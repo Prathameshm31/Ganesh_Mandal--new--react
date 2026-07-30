@@ -208,6 +208,11 @@ export default function Dashboard() {
               Overview of your mandal&apos;s activities and collections
             </Typography>
           </Box>
+          <Button variant="contained" size="large"
+            onClick={() => navigate('/donate')}
+            sx={{ height: 48, px: 4, borderRadius: 3, fontWeight: 700, fontSize: 15, gap: 1 }}>
+            <IndianRupee size={20} /> Donate Now
+          </Button>
         </Box>
       </motion.div>
 
