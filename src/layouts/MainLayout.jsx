@@ -10,6 +10,7 @@ import {
   MdLocationCity, MdReceipt, MdNotifications, MdSettings,
   MdDarkMode, MdLightMode, MdLogout, MdAccountBalance, MdGroups,
   MdAdminPanelSettings, MdVpnKey, MdSecurity, MdExpandMore, MdExpandLess,
+  MdFavorite,
 } from 'react-icons/md';
 import { useThemeMode } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -79,6 +80,7 @@ export default function MainLayout({ children }) {
   };
 
   const adminMenuItems = [
+    { text: 'Payment Management', icon: MdPayments, path: '/admin/payments' },
     { text: 'Permission Dashboard', icon: MdSecurity, path: '/permissions/dashboard', perm: 'PERMISSIONS:VIEW' },
     { text: 'User Permissions', icon: MdVpnKey, path: '/permissions', perm: 'PERMISSIONS:ASSIGN' },
     { text: 'Role Management', icon: MdAdminPanelSettings, path: '/roles', perm: 'ROLES:VIEW' },
@@ -91,6 +93,7 @@ export default function MainLayout({ children }) {
     { text: 'Dashboard', icon: MdDashboard, path: '/' },
     { text: 'Members', icon: MdPeople, path: '/members' },
     { text: 'Donations', icon: MdPayments, path: '/donations' },
+    { text: 'Donate Now', icon: MdFavorite, path: '/donate' },
     { text: 'Activities', icon: MdEvent, path: '/activities' },
     { text: 'Ganesh Murti', icon: MdAccountBalance, path: '/murti' },
     { text: 'Volunteers', icon: MdGroups, path: '/volunteers' },

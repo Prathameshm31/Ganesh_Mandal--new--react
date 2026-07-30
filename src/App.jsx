@@ -41,6 +41,10 @@ import Forbidden from './pages/Error/Forbidden';
 import UserPermissions from './pages/Permissions/UserPermissions';
 import PermissionDashboard from './pages/Permissions/PermissionDashboard';
 import RoleList from './pages/RoleManagement/RoleList';
+import PaymentManagement from './pages/Payments/PaymentManagement';
+import PaymentList from './pages/Payments/PaymentList';
+import PaymentDetails from './pages/Payments/PaymentDetails';
+import OnlineDonation from './pages/Payments/OnlineDonation';
 
 function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
@@ -96,6 +100,10 @@ export default function App() {
                 <Route path="/permissions/dashboard" element={<PermissionDashboard />} />
                 <Route path="/roles" element={<RoleList />} />
                 <Route path="/403" element={<Forbidden />} />
+                <Route path="/admin/payments" element={<PaymentManagement />} />
+                <Route path="/admin/payments/list" element={<PaymentList />} />
+                <Route path="/admin/payments/:id" element={<PaymentDetails />} />
+                <Route path="/donate" element={<OnlineDonation />} />
               </Route>
             </Route>
 

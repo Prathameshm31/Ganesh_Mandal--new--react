@@ -27,7 +27,7 @@ import {
   DialogContentText,
   DialogActions,
 } from '@mui/material';
-import { MdAdd, MdEdit, MdDelete, MdClear, MdSearch, MdReceipt } from 'react-icons/md';
+import { MdAdd, MdEdit, MdDelete, MdClear, MdSearch, MdReceipt, MdPayment } from 'react-icons/md';
 import { toast } from 'react-toastify';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -207,9 +207,15 @@ export default function DonationsList() {
             {filtered.length} donation{filtered.length !== 1 ? 's' : ''} · ₹{totalAmount.toLocaleString('en-IN')} total
           </Typography>
         </Box>
-        <Button variant="contained" startIcon={<MdAdd />} onClick={handleAdd}>
-          Add Donation
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button variant="contained" startIcon={<MdAdd />} onClick={handleAdd}>
+            Add Donation
+          </Button>
+          <Button variant="outlined" color="success" startIcon={<MdPayment />}
+            onClick={() => navigate('/donate')}>
+            Pay Online
+          </Button>
+        </Box>
       </Box>
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
