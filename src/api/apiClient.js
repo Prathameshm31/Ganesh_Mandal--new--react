@@ -33,7 +33,14 @@ apiClient.interceptors.response.use(
 );
 
 export const extractErrorMessage = (error) => {
-  if (error.response && error.response.data) {
+  if (!error.response) {
+    return 'Server is currently down. Please try again later.';
+  }
+  const status = error.response.status;
+  if (status >= 502 && typeof error.response.data === 'string' && error.response.data.includes('<html')) {
+    return 'Server is currently down. Please try again later.';
+  }
+  if (error.response.data) {
     const data = error.response.data;
     if (typeof data === 'string') return data;
     if (data.message) return data.message;
@@ -42,7 +49,7 @@ export const extractErrorMessage = (error) => {
       return Object.values(data.errors).flat().join(', ');
     }
   }
-  return error.message || 'An unexpected error occurred';
+  return 'An unexpected error occurred';
 };
 
 export default apiClient;
